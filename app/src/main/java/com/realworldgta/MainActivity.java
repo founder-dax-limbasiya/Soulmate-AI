@@ -236,9 +236,17 @@ public class MainActivity extends Activity {
                 }
                 return result;
             } catch (Exception error) {
-                return safeJson("error", error.getMessage());
+                return safeJsonObject("error", error.getMessage());
             } finally {
                 if (cursor != null) cursor.close();
+            }
+        }
+
+        private JSONObject safeJsonObject(String key, String value) {
+            try {
+                return new JSONObject().put(key, value == null ? "" : value);
+            } catch (Exception ignored) {
+                return new JSONObject();
             }
         }
 
