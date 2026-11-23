@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
         });
 
         webView = new WebView(this);
-        webView.setBackgroundColor(Color.rgb(10, 14, 28));
+        webView.setBackgroundColor(Color.rgb(244, 241, 234));
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient() {
             @Override
