@@ -94,10 +94,111 @@ label{font-size:11px;color:#c6cde0;font-weight:700}
 .modal h3{margin:0 0 15px;font-size:17px}
 .small-kicker{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#e4a5d0;font-weight:800}
 @media(min-width:600px){.scroll{max-width:620px;width:100%;margin:auto}.topbar{padding-left:max(18px,calc((100% - 620px)/2));padding-right:max(18px,calc((100% - 620px)/2))}.chat-wrap{max-width:620px;width:100%;margin:auto}}
+
+/* Soulmate editorial design system — deliberately restrained, warm and human. */
+:root{
+ color-scheme:light;
+ --bg:#f4f1ea;--panel:#fffdfa;--panel2:#ece7dd;--line:#ded8cc;
+ --muted:#77746d;--text:#292821;--pink:#a84d3b;--violet:#716b5e;--mint:#6c816f;--danger:#a84943;
+}
+html,body{background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#app{background:var(--bg)}
+.topbar{height:62px;padding:0 20px;border-bottom:1px solid var(--line);background:#f8f6f1}
+.brand{gap:9px;font-size:12px;font-weight:800;letter-spacing:1.9px;color:#282720}
+.brandmark{width:27px;height:27px;border-radius:7px;background:#292821;color:#f7f3eb;font-family:Georgia,serif;font-size:18px;font-weight:400;box-shadow:none}
+.pill{border:1px solid var(--line);background:transparent;border-radius:4px;padding:6px 8px;font-size:9px;color:#68665e;letter-spacing:.65px}
+.pill .dot{background:#71866f}
+.scroll{padding:23px 19px 26px}
+.heading{font-family:Georgia,"Times New Roman",serif;font-size:31px;font-weight:400;line-height:1.1;letter-spacing:-.55px;margin:4px 0 8px}
+.sub{font-size:13px;line-height:1.6;color:#77746d}
+.section-row{margin:27px 1px 13px}
+.section-title{font-size:13px;font-weight:750;letter-spacing:.1px}
+.link-btn{color:var(--pink)}
+.hero{border-radius:9px;padding:23px 21px 21px;background:#e9e4da;border:1px solid #ded7cb;box-shadow:none}
+.hero:after{content:none}
+.hero-kicker,.small-kicker{font-size:9px;letter-spacing:1.45px;color:#8b5142;font-weight:800;text-transform:uppercase}
+.hero h1{font-family:Georgia,"Times New Roman",serif;font-size:34px;line-height:1.08;letter-spacing:-.7px;font-weight:400;max-width:300px;margin:8px 0 10px}
+.hero p{font-size:12px;line-height:1.65;color:#666259;max-width:300px;margin:0 0 17px}
+.primary{background:#a34e3b;border:1px solid #a34e3b;border-radius:6px;padding:12px 16px;color:#fff;font-size:12px;font-weight:750;box-shadow:none}
+.primary:disabled{background:#cfc9bd;border-color:#cfc9bd;color:#77746d;opacity:1}
+.secondary{background:#f8f6f1;border:1px solid #d8d1c5;border-radius:6px;padding:11px 14px;color:#38362f;font-size:12px;font-weight:700}
+.ghost{color:#777168;padding:8px 9px}
+.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.char-card{border:1px solid #e2ddd3;border-radius:8px;background:#fffdfa;padding:9px;box-shadow:none}
+.char-card:active{background:#f8f5ef}
+.avatar{height:112px;border-radius:5px;margin-bottom:11px;display:flex;align-items:flex-end;justify-content:flex-start;padding:12px;position:relative;background:#e8e2d7!important;overflow:hidden}
+.avatar:before{width:118px;height:118px;top:-65px;right:-38px;background:rgba(255,255,255,.48);filter:none;border:1px solid rgba(83,75,59,.10)}
+.avatar:after{width:86px;height:86px;bottom:-54px;left:65%;background:rgba(255,255,255,.20);filter:none;border:1px solid rgba(83,75,59,.09)}
+.avatar.tone-mia{background:#eee0d9!important}
+.avatar.tone-aria{background:#dfe5e3!important}
+.avatar.tone-zara{background:#e5e0e9!important}
+.avatar.tone-noah{background:#e9e4d6!important}
+.avatar.tone-custom{background:#e5e5dc!important}
+.avatar .face{z-index:1;font-family:Georgia,"Times New Roman",serif;font-size:36px;font-weight:400;line-height:1;color:#38342d;text-shadow:none}
+.char-name{font-family:Georgia,"Times New Roman",serif;font-size:18px;font-weight:400;letter-spacing:-.15px;color:#2b2923;margin:0 0 3px}
+.char-meta{font-size:9px;color:#8c877d;letter-spacing:.35px;margin-bottom:7px;text-transform:uppercase}
+.char-desc{font-size:10px;line-height:1.5;color:#666259;height:31px}
+.tags{gap:5px;margin-top:9px}
+.tag{font-size:8px;color:#766f64;border:1px solid #e6e0d6;background:#f7f4ee;padding:4px 7px;border-radius:3px;letter-spacing:.25px}
+.bottomnav{height:65px;padding:5px 12px max(7px,env(safe-area-inset-bottom));border-top:1px solid #dfd9ce;background:#faf8f3}
+.nav-item{color:#8a867e;gap:3px;font-size:9px;font-weight:650;letter-spacing:.1px}
+.nav-item .nav-icon{font-size:15px;line-height:1.2;font-weight:400}
+.nav-item.active{color:#a34e3b}
+.nav-item.active .nav-icon{filter:none}
+.feature-row{gap:9px;margin-top:11px}
+.feature{background:transparent;border:1px solid #ded8cc;border-radius:6px;padding:11px 10px}
+.feature strong{font-size:11px;margin:4px 0 3px}
+.feature span{font-size:9px;color:#77746d}
+.feature-icon{font-size:12px;color:#a34e3b;font-weight:800;letter-spacing:1px}
+.panel{background:#fffdfa;border:1px solid #e1dbd0;border-radius:7px;padding:14px;margin-bottom:10px}
+.panel-title{font-family:Georgia,"Times New Roman",serif;font-size:16px;font-weight:400;color:#302e27;margin:0 0 5px}
+.panel-copy{color:#77736a;font-size:10px;line-height:1.6}
+.switch{background:#d4cfc5;border-radius:99px}
+.switch:after{background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.switch.on{background:#a34e3b}
+.progress{height:5px;border-radius:99px;background:#e9e4da}
+.progress-fill{background:#a34e3b;border-radius:99px}
+.chat-wrap{background:var(--bg)}
+.chat-head{height:63px;padding:0 15px;border-bottom:1px solid var(--line);background:#faf8f3}
+.back{width:34px;height:34px;background:transparent;border:1px solid #ddd7cc;border-radius:6px;color:#5c574e}
+.chat-avatar{height:37px;width:37px;border-radius:5px;display:flex;align-items:flex-end;justify-content:flex-start;padding:6px;font-family:Georgia,serif;font-size:18px;color:#39352f;background:#e8e2d7!important}
+.chat-avatar.tone-mia{background:#eee0d9!important}.chat-avatar.tone-aria{background:#dfe5e3!important}.chat-avatar.tone-zara{background:#e5e0e9!important}.chat-avatar.tone-noah{background:#e9e4d6!important}.chat-avatar.tone-custom{background:#e5e5dc!important}
+.chat-title{font-family:Georgia,"Times New Roman",serif;font-size:17px;font-weight:400;color:#2d2b25}
+.chat-sub{font-size:9px;color:#7d8374;margin-top:2px;letter-spacing:.15px}
+.chat-log{padding:19px 14px 22px;gap:13px}
+.bubble{max-width:84%;padding:12px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.bubble.ai{background:#fffdfa;border:1px solid #e3ddd2;border-bottom-left-radius:3px;color:#39372f}
+.bubble.user{background:#a34e3b;border:1px solid #a34e3b;border-bottom-right-radius:3px;color:#fff}
+.bubble-time{font-size:9px;color:#948e83;margin-top:5px}
+.chat-compose{padding:10px 12px max(10px,env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#faf8f3}
+.chat-input{min-height:44px;background:#fffdfa;border:1px solid #ded8cc;color:#292821;border-radius:7px;padding:12px 13px;font-size:13px}
+.chat-input::placeholder{color:#a29d92}
+.send{height:44px;width:45px;border-radius:7px;background:#a34e3b;color:#fff;font-size:15px}
+.empty{padding:34px 12px;text-align:left;color:#77746d;font-size:12px;line-height:1.7}
+.empty .big{font-family:Georgia,serif;font-size:24px;margin-bottom:8px;color:#a34e3b}
+.field{background:#fffdfa;border:1px solid #dcd6ca;border-radius:6px;padding:12px;color:#292821}
+label{font-size:10px;color:#625e55;font-weight:750;letter-spacing:.2px}
+.note{font-size:9px;color:#8a857b;line-height:1.6}
+.danger-btn{background:#fbefec;color:#a84943;border:1px solid #efd4ce;padding:10px 13px;border-radius:6px}
+.gate{background:var(--bg);padding:30px 23px}
+.gate-logo{width:42px;height:42px;border-radius:8px;background:#292821;color:#f7f3eb;font-family:Georgia,serif;font-size:21px;box-shadow:none;margin-bottom:24px}
+.gate h1{font-family:Georgia,"Times New Roman",serif;font-size:36px;font-weight:400;letter-spacing:-.9px;color:#292821}
+.gate p{color:#77746d;font-size:12px;line-height:1.65}
+.gate-card{background:#fffdfa;border:1px solid #e1dbd0;border-radius:7px;padding:15px;margin:13px 0}
+.gate-card strong{font-size:12px;color:#302e27}
+.gate-card p{font-size:10px;margin:7px 0 0}
+.gate .primary{width:100%;margin-top:9px;padding:14px}
+.toast{bottom:82px;background:#302e27;border:1px solid #4b473e;border-radius:7px;color:#fff}
+.modal-back{background:rgba(30,27,22,.45)}
+.modal{background:#f8f6f1;border:1px solid #e0d9cd;border-radius:12px;padding:20px 16px 24px}
+.modal h3{font-family:Georgia,"Times New Roman",serif;font-size:23px;font-weight:400;color:#292821}
+.small-kicker{color:#8f4e3d}
+@media(min-width:600px){.scroll{max-width:620px}.chat-wrap{max-width:620px}}
+
 </style>
 </head>
 <body>
-<div id="app"><div class="gate"><div class="gate-logo">♡</div><div class="small-kicker">Private by design</div><h1>Soulmate AI</h1><p>Meet fictional characters, create stories and build a companion that remembers your preferences — with conversations kept on your device.</p><div class="gate-card"><strong>18+ only</strong><p>This app is intended only for adults. You must be at least 18 to continue. Your date of birth is checked on this phone and is not stored or uploaded.</p></div><label for="birthDate">Date of birth</label><input class="field" id="birthDate" type="date" autocomplete="bday"><div class="note" id="ageNotice">Age check is self-declared. It is not government ID or identity verification.</div><button class="primary" id="ageContinue">I am 18 or older — continue</button></div></div>
+<div id="app"><div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Private by design</div><h1>Soulmate AI</h1><p>Meet fictional characters, create stories and build a companion that remembers your preferences — with conversations kept on your device.</p><div class="gate-card"><strong>18+ only</strong><p>This app is intended only for adults. You must be at least 18 to continue. Your date of birth is checked on this phone and is not stored or uploaded.</p></div><label for="birthDate">Date of birth</label><input class="field" id="birthDate" type="date" autocomplete="bday"><div class="note" id="ageNotice">Age check is self-declared. It is not government ID or identity verification.</div><button class="primary" id="ageContinue">I am 18 or older — continue</button></div></div>
 <div class="toast" id="toast"></div>
 <script>
 (function(){
@@ -135,26 +236,32 @@ state.ageVerified=true;save();renderOnboarding();
 };
 }
 function renderOnboarding(){
-app.innerHTML='<div class="gate"><div class="gate-logo">✦</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your chats and character memories stay on this phone in this build. You decide what to keep.</p><div class="gate-card"><div class="row"><strong>Private conversations</strong><span class="pill"><span class="dot"></span>Always on</span></div><p>Chat text and personal memories are stored locally using Android Keystore-backed encryption. Nothing is uploaded to a Soulmate AI server.</p></div><div class="gate-card"><div class="row"><strong>Anonymous usage analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Optional. Off by default. Analytics collection is not connected in this build, so no usage data is currently sent, even if you change this preference.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can revisit privacy preferences in Settings. This age check is self-declared and may not meet every jurisdiction's age-assurance requirements.</p></div>';
+app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your chats and character memories stay on this phone in this build. You decide what to keep.</p><div class="gate-card"><div class="row"><strong>Private conversations</strong><span class="pill"><span class="dot"></span>Always on</span></div><p>Chat text and personal memories are stored locally using Android Keystore-backed encryption. Nothing is uploaded to a Soulmate AI server.</p></div><div class="gate-card"><div class="row"><strong>Anonymous usage analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Optional. Off by default. Analytics collection is not connected in this build, so no usage data is currently sent, even if you change this preference.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can revisit privacy preferences in Settings. This age check is self-declared and may not meet every jurisdiction's age-assurance requirements.</p></div>';
 document.getElementById("analyticsSwitch").classList.toggle("on",!!state.analyticsConsent);
 document.getElementById("analyticsSwitch").onclick=function(){state.analyticsConsent=!state.analyticsConsent;this.classList.toggle("on",state.analyticsConsent);};
 document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");};
 }
-function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">♡</div>SOULMATE AI</div><div class="pill"><span class="dot"></span>LOCAL & PRIVATE</div></div>';}
-function nav(active){return '<div class="bottomnav">'+[['discover','✦','Discover'],['chats','▤','Chats'],['create','＋','Create'],['settings','⚙','Settings']].map(([id,icon,label])=>'<button class="nav-item '+(active===id?'active':'')+'" data-tab="'+id+'"><span class="nav-icon">'+icon+'</span>'+label+'</button>').join("")+'</div>';}
-function card(c){return '<button class="char-card" data-character="'+esc(c.id)+'"><div class="avatar" style="background:'+esc(c.gradient)+'"><span class="face">'+esc(c.emoji)+'</span></div><div class="char-name">'+esc(c.name)+'</div><div class="char-meta">Fictional adult · '+esc(c.age)+'</div><div class="char-desc">'+esc(c.description||c.bio)+'</div><div class="tags">'+(c.tags||[]).slice(0,2).map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div></button>';}
+function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>ON THIS DEVICE</div></div>';}
+function nav(active){return '<div class="bottomnav">'+[['discover','⌂','Discover'],['chats','◷','Chats'],['create','＋','Create'],['settings','≡','Settings']].map(([id,icon,label])=>'<button class="nav-item '+(active===id?'active':'')+'" data-tab="'+id+'"><span class="nav-icon">'+icon+'</span>'+label+'</button>').join("")+'</div>';}
+function tone(c){return c.id==="mia"?"tone-mia":c.id==="aria"?"tone-aria":c.id==="zara"?"tone-zara":c.id==="noah"?"tone-noah":"tone-custom";}
+function monogram(c){return esc(String(c.name||"S").trim().charAt(0).toUpperCase()||"S");}
+function card(c){return '<button class="char-card" data-character="'+esc(c.id)+'"><div class="avatar '+tone(c)+'"><span class="face">'+monogram(c)+'</span></div><div class="char-name">'+esc(c.name)+'</div><div class="char-meta">FICTIONAL ADULT · '+esc(c.age)+'</div><div class="char-desc">'+esc(c.description||c.bio)+'</div><div class="tags">'+(c.tags||[]).slice(0,2).map(t=>'<span class="tag">'+esc(t)+'</span>').join("")+'</div></button>';}
+
 function renderDiscover(){
 const chars=allCharacters();
-return '<div class="scroll"><div class="hero"><div class="hero-kicker">Your own little universe</div><h1>Someone worth talking to.</h1><p>Meet characters with their own personalities, stories and memories. Your conversations stay on your phone.</p><button class="primary" data-tab="settings">Set up local AI&nbsp; →</button></div><div class="feature-row"><div class="feature"><div class="feature-icon">🔒</div><strong>Private chats</strong><span>Encrypted on your device</span></div><div class="feature"><div class="feature-icon">🧠</div><strong>Character memory</strong><span>Keep your story going</span></div></div><div class="section-row"><div class="section-title">Meet your characters</div><span class="pill">18+ FICTION</span></div><div class="grid">'+chars.map(card).join("")+'</div><div class="section-row"><div class="section-title">A note about the AI</div></div><div class="panel"><div class="panel-title">Runs on your phone</div><div class="panel-copy">Download the small starter model once. After it is installed, chats can run offline. Model quality and speed depend on your phone's memory and processor.</div></div></div>';
+return '<div class="scroll"><div class="small-kicker">A more personal kind of conversation</div><div class="hero"><div class="hero-kicker">SOULMATE · YOUR PRIVATE SPACE</div><h1>Good conversations start somewhere.</h1><p>Meet original characters, get to know them at your own pace, and keep your chats on this phone.</p><button class="primary" data-tab="settings">Set up your private AI&nbsp; →</button></div><div class="feature-row"><div class="feature"><div class="feature-icon">01</div><strong>Made for you</strong><span>Characters with distinct voices</span></div><div class="feature"><div class="feature-icon">02</div><strong>Kept on device</strong><span>Your chat history stays local</span></div></div><div class="section-row"><div class="section-title">Meet the characters</div><span class="pill">18+ · FICTION</span></div><div class="grid">'+chars.map(card).join("")+'</div><div class="section-row"><div class="section-title">A note on privacy</div></div><div class="panel"><div class="panel-title">Your conversations stay here</div><div class="panel-copy">Soulmate currently runs its language model on your phone. Chat text and character memories are not sent to a Soulmate server.</div></div></div>';
 }
+
 function renderChats(){
 const ids=Object.keys(state.messages||{}).filter(id=>(state.messages[id]||[]).length>0);
-if(!ids.length)return '<div class="scroll"><div class="heading">Your conversations</div><p class="sub">Your story starts here. Pick a character and say hello.</p><div class="empty"><div class="big">💌</div>No conversations yet.</div><button class="primary" data-tab="discover">Explore characters</button></div>';
-return '<div class="scroll"><div class="heading">Your conversations</div><p class="sub">Stored privately on this phone.</p>'+ids.map(id=>{const c=characterById(id),m=localHistory(id),last=m[m.length-1];return '<button class="panel row" style="width:100%;text-align:left" data-character="'+esc(id)+'"><div style="display:flex;align-items:center;gap:12px"><div class="chat-avatar" style="background:'+esc(c.gradient)+'">'+esc(c.emoji)+'</div><div><div class="panel-title">'+esc(c.name)+'</div><div class="panel-copy">'+esc(last?last.content.slice(0,65):"Start chatting")+'</div></div></div><span style="color:#a9b2c8">›</span></button>';}).join("")+'</div>';
+if(!ids.length)return '<div class="scroll"><div class="small-kicker">YOUR SPACE</div><div class="heading">Conversations</div><p class="sub">The people you have been talking to will appear here.</p><div class="empty"><div class="big">Nothing here yet.</div>Choose a character and start with a hello.</div><button class="primary" data-tab="discover">Meet the characters</button></div>';
+return '<div class="scroll"><div class="small-kicker">YOUR SPACE</div><div class="heading">Conversations</div><p class="sub">Your recent chats, saved on this phone.</p>'+ids.map(id=>{const c=characterById(id),m=localHistory(id),last=m[m.length-1];return '<button class="panel row" style="width:100%;text-align:left" data-character="'+esc(id)+'"><div style="display:flex;align-items:center;gap:12px"><div class="chat-avatar '+tone(c)+'">'+monogram(c)+'</div><div><div class="panel-title">'+esc(c.name)+'</div><div class="panel-copy">'+esc(last?last.content.slice(0,65):"Start chatting")+'</div></div></div><span style="color:#8d877c;font-size:20px">›</span></button>';}).join("")+'</div>';
 }
+
 function renderCreate(){
-return '<div class="scroll"><div class="heading">Create a character</div><p class="sub">Give your fictional adult character a personality, a backstory and a voice.</p><div class="panel"><div class="small-kicker">Character studio</div><div style="font-size:32px;margin:10px 0">✧</div><div class="panel-title">Your imagination, your character.</div><div class="panel-copy">Create an original fictional adult companion. You can edit or delete your characters later.</div><button class="primary" style="margin-top:15px" id="openCreator">＋ Create character</button></div><div class="section-row"><div class="section-title">Your characters</div></div><div class="grid">'+(state.customCharacters||[]).map(card).join("")+'</div></div>';
+return '<div class="scroll"><div class="small-kicker">CHARACTER STUDIO</div><div class="heading">Create someone new.</div><p class="sub">Build a fictional adult character with their own point of view, habits and backstory.</p><div class="panel"><div class="small-kicker">START WITH A CHARACTER</div><div class="panel-title" style="font-size:22px;margin:9px 0">A blank page, a new voice.</div><div class="panel-copy">Choose a name, set their age and describe what makes them themselves. You can change their details later.</div><button class="primary" style="margin-top:15px" id="openCreator">Create a character&nbsp; +</button></div><div class="section-row"><div class="section-title">Created by you</div></div><div class="grid">'+(state.customCharacters||[]).map(card).join("")+'</div></div>';
 }
+
 function renderSettings(){
 const installed=isInstalled();
 return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · approximately 328 MiB</div></div><span class="pill">'+(installed?'DOWNLOADED':'NOT INSTALLED')+'</span></div><div class="progress"><div class="progress-fill" id="downloadProgress"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is on this phone. Load it to start chatting.':'Download the model once. After that, inference runs locally and can work offline.')+'</div><div class="feature-row"><button class="secondary" style="flex:1" id="downloadModel" '+(installed?'disabled':'')+'>'+(installed?'Model downloaded':'Download model')+'</button><button class="primary" style="flex:1" id="loadModel" '+(installed?'':'disabled')+'>'+(aiReady?'Reload AI':'Load local AI')+'</button></div><div class="note" style="margin-top:11px">The model is not included in the APK. Keep at least 1.5–2 GB of free RAM during generation. Low-memory phones may struggle.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chats and character memories are saved on this device using AES-GCM encryption. No chat contents, prompts or memories are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. This also removes your age-gate preference.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.3.0<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
@@ -173,7 +280,7 @@ function openChat(id){
 state.selectedCharacterId=id;save();
 const c=characterById(id);
 const history=localHistory(id);
-app.innerHTML='<div class="chat-wrap"><div class="chat-head"><button class="back" id="chatBack">‹</button><div class="chat-avatar" style="background:'+esc(c.gradient)+'">'+esc(c.emoji)+'</div><div style="flex:1"><div class="chat-title">'+esc(c.name)+' · '+esc(c.age)+'</div><div class="chat-sub">'+(aiReady?'● Local AI ready':'● Private character chat')+'</div></div><button class="ghost" id="chatOptions">•••</button></div><div class="chat-log" id="chatLog">'+renderMessages(history)+'</div><div class="chat-compose"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Write something…"></textarea><button class="send" id="sendChat">➤</button></div></div>';
+app.innerHTML='<div class="chat-wrap"><div class="chat-head"><button class="back" id="chatBack">‹</button><div class="chat-avatar '+tone(c)+'">'+monogram(c)+'</div><div style="flex:1"><div class="chat-title">'+esc(c.name)+' · '+esc(c.age)+'</div><div class="chat-sub">'+(aiReady?'● Local AI ready':'● Private character chat')+'</div></div><button class="ghost" id="chatOptions">•••</button></div><div class="chat-log" id="chatLog">'+renderMessages(history)+'</div><div class="chat-compose"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Write something…"></textarea><button class="send" id="sendChat">➤</button></div></div>';
 document.getElementById("chatBack").onclick=()=>renderMain("chats");
 document.getElementById("chatOptions").onclick=()=>toast("Conversation options will be added here.");
 document.getElementById("sendChat").onclick=sendMessage;
@@ -183,7 +290,7 @@ const log=document.getElementById("chatLog");log.scrollTop=log.scrollHeight;
 if(aiReady&&native)native.startCharacter(characterPrompt(c),JSON.stringify(history.slice(-12)));
 }
 function renderMessages(messages){
-if(!messages.length)return '<div class="empty"><div class="big">✨</div><div style="color:#e2e7f4;font-weight:700;margin-bottom:6px">A new conversation</div>Say hello and let your story begin.</div>';
+if(!messages.length)return '<div class="empty"><div class="big">A first hello.</div><div style="color:#5d594f;font-weight:700;margin-bottom:6px">A new conversation with '+esc(characterById(state.selectedCharacterId).name)+'</div>Start wherever feels natural.</div>';
 return messages.map(m=>'<div class="bubble '+(m.role==="user"?"user":"ai")+(m.streaming?' last-ai-bubble':'')+'">'+esc(m.content)+(m.role==="assistant"&&!m.streaming?'<div class="bubble-time">On-device response</div>':'')+'</div>').join("");
 }
 function sendMessage(){
@@ -269,7 +376,7 @@ document.getElementById("cancelCreator").onclick=()=>modal.remove();
 document.getElementById("saveCreator").onclick=function(){
 const name=document.getElementById("newCharName").value.trim(),age=Number(document.getElementById("newCharAge").value),bio=document.getElementById("newCharBio").value.trim();
 if(!name||!Number.isInteger(age)||age<18||age>99||bio.length<12){toast("Add a name, an adult age and a little more character detail.");return;}
-const id="custom-"+Date.now();state.customCharacters.push({id,name,age,emoji:"✨",gradient:"linear-gradient(145deg,#aa6eae,#596caa)",role:"Your original character",description:bio.slice(0,90),tags:["Original","Custom"],bio:bio});
+const id="custom-"+Date.now();state.customCharacters.push({id,name,age,emoji:"",gradient:"",role:"Your original character",description:bio.slice(0,90),tags:["Original","Custom"],bio:bio});
 save();modal.remove();renderMain("create");toast("Your character was created.");
 };
 }
