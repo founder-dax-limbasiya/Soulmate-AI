@@ -4,8 +4,10 @@ An Android-first, privacy-first AI companion foundation. The current build runs 
 
 ## Current MVP foundation
 
+- Calm editorial UI with restrained colours, typography-led screens and character monograms (no generated-looking portrait placeholders).
+
 - Self-declared 18+ entry gate. Date of birth is used only for the on-device check and is not saved.
-- Character discovery and local conversation UI.
+- Character discovery, local conversation UI and user-created fictional character profiles.
 - AES-GCM encrypted local app state, with the encryption key held by Android Keystore.
 - Optional analytics consent preference is off by default. No analytics endpoint or cloud upload is connected in this build.
 - On-device Qwen3-0.6B LiteRT-LM model download and CPU inference.

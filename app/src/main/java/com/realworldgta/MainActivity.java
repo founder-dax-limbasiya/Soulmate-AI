@@ -36,9 +36,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(10, 14, 28));
-        getWindow().setNavigationBarColor(Color.rgb(10, 14, 28));
-        getWindow().getDecorView().setSystemUiVisibility(0);
+        getWindow().setStatusBarColor(Color.rgb(244, 241, 234));
+        getWindow().setNavigationBarColor(Color.rgb(244, 241, 234));
+        int systemUiFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            systemUiFlags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+        }
+        getWindow().getDecorView().setSystemUiVisibility(systemUiFlags);
 
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         secureStore = new SecureStoreBridge(this);
