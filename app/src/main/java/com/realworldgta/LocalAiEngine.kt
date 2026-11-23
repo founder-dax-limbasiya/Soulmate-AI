@@ -92,7 +92,10 @@ class LocalAiEngine(
             postStatus("generating", "Generating on this device…")
             try {
                 runBlocking {
-                    activeConversation.sendMessageAsync(\n                        prompt,\n                        extraContext = mapOf("enable_thinking" to false)\n                    ).collect { chunk ->
+                    activeConversation.sendMessageAsync(
+                        prompt,
+                        extraContext = mapOf("enable_thinking" to false)
+                    ).collect { chunk ->
                         val token = chunk.toString()
                         mainHandler.post { listener.onToken(token) }
                     }
