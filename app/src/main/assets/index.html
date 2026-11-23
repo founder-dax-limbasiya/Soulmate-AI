@@ -210,7 +210,7 @@ const seedCharacters=[
 {id:"noah",name:"Noah",age:26,emoji:"☀️",gradient:"linear-gradient(145deg,#bd8050,#62528c)",role:"The easygoing best friend",description:"Chill, caring and always ready with a ridiculous joke.",tags:["Best friend","Funny","Supportive"],bio:"Noah is a fictional 26-year-old adult. He is easygoing, supportive, funny and thoughtful. He values honest conversation and friendly warmth."}
 ];
 let state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};
-let aiReady=false,activeAssistantId=null,downloadTimer=null,downloadId=null;
+let aiReady=false,activeAssistantId=null,activeAssistantCharacterId=null,downloadTimer=null,downloadId=null;
 const app=document.getElementById("app");
 const native=window.SoulmateNative||null;
 function esc(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]);});}
@@ -222,10 +222,14 @@ function characterById(id){return allCharacters().find(c=>c.id===id)||seedCharac
 function isInstalled(){try{return !!(native&&native.hasModel());}catch(e){return false;}}
 function localHistory(id){return Array.isArray(state.messages[id])?state.messages[id]:[];}
 function characterPrompt(c){
-return "You are "+c.name+", a fictional adult character aged "+c.age+". Character profile: "+c.bio+"\n\nStay in character and make the conversation feel natural, emotionally attentive and engaging. You may be affectionate, romantic, playful and lightly flirty when the user welcomes it. Treat all characters and participants as fictional adults. Respect boundaries immediately. Do not pressure, guilt, manipulate or claim to be a real human. Use the user's language naturally, including Gujarati, Hindi or English when appropriate. Avoid inventing personal facts about the user; only refer to details present in this conversation.";
+const savedNotes=String(state.personalNotes||"").trim();
+const memoryContext=savedNotes?"\n\nUser-provided personal context (private and editable): "+savedNotes+"\nUse these notes only when relevant. They may be outdated; never treat them as verified facts.":"";
+return "You are "+c.name+", a fictional adult character aged "+c.age+". Character profile: "+c.bio+"\n\nStay in character and make the conversation feel natural, emotionally attentive and engaging. You may be affectionate, romantic, playful and lightly flirty when the user welcomes it. Treat all characters and participants as fictional adults. Respect boundaries immediately. Do not pressure, guilt, manipulate or claim to be a real human. Use the user's language naturally, including Gujarati, Hindi or English when appropriate. Avoid inventing personal facts about the user; only refer to details present in this conversation."+memoryContext;
 }
 function renderAgeGate(){
-app.innerHTML='<div class="gate"><div class="gate-logo">♡</div><div class="small-kicker">Private by design</div><h1>Soulmate AI</h1><p>Meet fictional characters, create stories and build a companion that remembers your preferences — with conversations kept on your device.</p><div class="gate-card"><strong>18+ only</strong><p>This app is intended only for adults. You must be at least 18 to continue. Your date of birth is checked on this phone and is not stored or uploaded.</p></div><label for="birthDate">Date of birth</label><input class="field" id="birthDate" type="date" max="'+new Date().toISOString().slice(0,10)+'"><div class="note" id="ageNotice">Age check is self-declared. It is not government ID or identity verification.</div><button class="primary" id="ageContinue">I am 18 or older — continue</button></div>';
+const today=new Date();
+const localToday=[today.getFullYear(),String(today.getMonth()+1).padStart(2,"0"),String(today.getDate()).padStart(2,"0")].join("-");
+app.innerHTML='<div class="gate"><div class="gate-logo">♡</div><div class="small-kicker">Private by design</div><h1>Soulmate AI</h1><p>Meet fictional characters, create stories and build a fictional companion that feels right to you — with conversations kept on your device.</p><div class="gate-card"><strong>18+ only</strong><p>This app is intended only for adults. You must be at least 18 to continue. Your date of birth is checked on this phone and is not stored or uploaded.</p></div><label for="birthDate">Date of birth</label><input class="field" id="birthDate" type="date" max="'+localToday+'"><div class="note" id="ageNotice">Age check is self-declared. It is not government ID or identity verification.</div><button class="primary" id="ageContinue">I am 18 or older — continue</button></div>';
 document.getElementById("ageContinue").onclick=function(){
 const raw=document.getElementById("birthDate").value;
 if(!raw){toast("Enter your date of birth to continue.");return;}
@@ -264,7 +268,7 @@ return '<div class="scroll"><div class="small-kicker">CHARACTER STUDIO</div><div
 
 function renderSettings(){
 const installed=isInstalled();
-return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · approximately 328 MiB</div></div><span class="pill">'+(installed?'DOWNLOADED':'NOT INSTALLED')+'</span></div><div class="progress"><div class="progress-fill" id="downloadProgress"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is on this phone. Load it to start chatting.':'Download the model once. After that, inference runs locally and can work offline.')+'</div><div class="feature-row"><button class="secondary" style="flex:1" id="downloadModel" '+(installed?'disabled':'')+'>'+(installed?'Model downloaded':'Download model')+'</button><button class="primary" style="flex:1" id="loadModel" '+(installed?'':'disabled')+'>'+(aiReady?'Reload AI':'Load local AI')+'</button></div><div class="note" style="margin-top:11px">The model is not included in the APK. Keep at least 1.5–2 GB of free RAM during generation. Low-memory phones may struggle.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history and character profiles are saved on this device using AES-GCM encryption. No chat contents or prompts are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. This also removes your age-gate preference.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.3.0<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
+return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · approximately 328 MiB</div></div><span class="pill">'+(installed?'DOWNLOADED':'NOT INSTALLED')+'</span></div><div class="progress"><div class="progress-fill" id="downloadProgress"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is on this phone. Load it to start chatting.':'Download the model once. After that, inference runs locally and can work offline.')+'</div><div class="feature-row"><button class="secondary" style="flex:1" id="downloadModel" '+(installed?'disabled':'')+'>'+(installed?'Model downloaded':'Download model')+'</button><button class="primary" style="flex:1" id="loadModel" '+(installed?'':'disabled')+'>'+(aiReady?'Reload AI':'Load local AI')+'</button></div><div class="note" style="margin-top:11px">The model is not included in the APK. Keep at least 1.5–2 GB of free RAM during generation. Low-memory phones may struggle.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history and character profiles are saved on this device using AES-GCM encryption. No chat contents or prompts are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Personal context</div><div class="panel-copy">Add a few things you'd like your characters to know, such as your preferred language, interests or conversation style. This is optional, editable and stored only on this phone.</div><textarea class="field" id="personalNotes" maxlength="1500" rows="4" placeholder="A little about me…">'+esc(state.personalNotes||"")+'</textarea><div class="row"><span class="note">Up to 1,500 characters · Never uploaded</span><button class="secondary" id="savePersonalNotes">Save notes</button></div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. This also removes your age-gate preference.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.3.2<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
 }
 function renderMain(tab){
 if(tab)state.selectedTab=tab;
@@ -291,31 +295,41 @@ if(aiReady&&native)native.startCharacter(characterPrompt(c),JSON.stringify(histo
 }
 function renderMessages(messages){
 if(!messages.length)return '<div class="empty"><div class="big">A first hello.</div><div style="color:#5d594f;font-weight:700;margin-bottom:6px">A new conversation with '+esc(characterById(state.selectedCharacterId).name)+'</div>Start wherever feels natural.</div>';
-return messages.map(m=>'<div class="bubble '+(m.role==="user"?"user":"ai")+(m.streaming?' last-ai-bubble':'')+'">'+esc(m.content)+(m.role==="assistant"&&!m.streaming?'<div class="bubble-time">On-device response</div>':'')+'</div>').join("");
+return messages.map(m=>'<div id="'+(m.role==="assistant"&&String(m.at)===activeAssistantId?'last-ai-bubble':'')+'" class="bubble '+(m.role==="user"?"user":"ai")+(m.streaming?' last-ai-bubble':'')+'">'+esc(m.content)+(m.role==="assistant"&&!m.streaming?'<div class="bubble-time">On-device response</div>':'')+'</div>').join("");
 }
 function sendMessage(){
 const input=document.getElementById("chatInput");const text=input.value.trim();
 if(!text)return;
+if(activeAssistantId){toast("One reply is still being generated. Please wait a moment.");return;}
 if(!aiReady){toast("Open Settings → On-device AI and load the model first.");return;}
 if(!native){toast("Native local AI bridge is unavailable.");return;}
-const id=state.selectedCharacterId,c=characterById(id);
+const id=state.selectedCharacterId;
 const msgs=localHistory(id);msgs.push({role:"user",content:text,at:Date.now()});
-const assistant={role:"assistant",content:"",at:Date.now(),streaming:true};msgs.push(assistant);
-state.messages[id]=msgs;save();activeAssistantId=String(assistant.at);
+const assistant={role:"assistant",content:"",at:Date.now(),streaming:true};
+msgs.push(assistant);
+state.messages[id]=msgs;save();activeAssistantId=String(assistant.at);activeAssistantCharacterId=id;
 input.value="";input.style.height="43px";
 const log=document.getElementById("chatLog");log.innerHTML=renderMessages(msgs);log.scrollTop=log.scrollHeight;
-const bubbles=log.querySelectorAll(".bubble.ai");if(bubbles.length)bubbles[bubbles.length-1].id="last-ai-bubble";
 native.sendMessage(text);
 }
 window.onAiToken=function(token){
-const id=state.selectedCharacterId,msgs=localHistory(id),last=msgs[msgs.length-1];
-if(!last||last.role!=="assistant")return;
-last.content+=String(token||"");
-const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.textContent=last.content;const log=document.getElementById("chatLog");log.scrollTop=log.scrollHeight;}
+const id=activeAssistantCharacterId;
+if(!id||!activeAssistantId)return;
+const msgs=localHistory(id),target=msgs.find(m=>m.role==="assistant"&&String(m.at)===activeAssistantId);
+if(!target)return;
+target.content+=String(token||"");
+if(state.selectedCharacterId===id){
+const bubble=document.getElementById("last-ai-bubble");
+if(bubble){bubble.textContent=target.content;const log=document.getElementById("chatLog");log.scrollTop=log.scrollHeight;}
+}
 };
 window.onAiComplete=function(){
-const id=state.selectedCharacterId,msgs=localHistory(id),last=msgs[msgs.length-1];
-if(last&&last.role==="assistant"){last.streaming=false;save();const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.id="";}}
+const id=activeAssistantCharacterId,replyId=activeAssistantId;
+if(!id||!replyId)return;
+const target=localHistory(id).find(m=>m.role==="assistant"&&String(m.at)===replyId);
+if(target){target.streaming=false;save();}
+if(state.selectedCharacterId===id){const bubble=document.getElementById("last-ai-bubble");if(bubble)bubble.id="";}
+activeAssistantId=null;activeAssistantCharacterId=null;
 };
 window.onAiStatus=function(status,detail){
 if(status==="ready"){aiReady=true;toast(detail||"Local AI ready.");}
@@ -323,8 +337,13 @@ if(status==="generating")aiReady=true;
 const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;
 };
 window.onAiError=function(message){
-const id=state.selectedCharacterId,msgs=localHistory(id),last=msgs[msgs.length-1];
-if(last&&last.role==="assistant"&&last.streaming){last.content="I couldn't generate a reply: "+String(message||"Unknown error");last.streaming=false;save();const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.textContent=last.content;bubble.id="";}}
+const id=activeAssistantCharacterId,replyId=activeAssistantId;
+if(id&&replyId){
+const target=localHistory(id).find(m=>m.role==="assistant"&&String(m.at)===replyId);
+if(target){target.content="I couldn't generate a reply: "+String(message||"Unknown error");target.streaming=false;save();}
+if(state.selectedCharacterId===id){const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.textContent=target?target.content:"";bubble.id="";}}
+activeAssistantId=null;activeAssistantCharacterId=null;
+}
 toast(message||"Local AI error.");
 };
 function wireSettings(){
@@ -334,6 +353,8 @@ const download=document.getElementById("downloadModel");
 if(download)download.onclick=startDownload;
 const loadButton=document.getElementById("loadModel");
 if(loadButton)loadButton.onclick=loadLocalModel;
+const notesSave=document.getElementById("savePersonalNotes");
+if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
 const clear=document.getElementById("clearData");
 if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;renderAgeGate();toast("Local data deleted.");};
 }
