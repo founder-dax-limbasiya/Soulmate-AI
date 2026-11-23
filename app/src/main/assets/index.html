@@ -118,7 +118,7 @@ button{border:0;border-radius:10px;background:var(--lime);color:#14200b;font-wei
   const matBuilding=[0xb7b7ac,0x999f9f,0xc3b8a5,0x8e9ba2,0xd1c9b8].map(c=>new THREE.MeshLambertMaterial({color:c}));
   const matWindow=new THREE.MeshLambertMaterial({color:0x526c78});
   const toLocal = (lat,lon) => ({x:(lon-center.lon)*111320*Math.cos(center.lat*Math.PI/180),z:-(lat-center.lat)*110540});
-  function clearWorld(){while(world.children.length>1) {const o=world.children.pop();if(o.geometry)o.geometry.dispose();}}
+  function clearWorld(){while(world.children.length>1){const o=world.children[world.children.length-1];world.remove(o);if(o.geometry)o.geometry.dispose();}}
   function addRoad(points,width){
     if(points.length<2)return;
     const verts=[],idx=[];
