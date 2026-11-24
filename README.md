@@ -45,5 +45,5 @@ Analytics are off by default and are not transmitted in this build. A future ana
 - This is an early MVP foundation, not a finished commercial adult platform.
 - The local model is a general small language model. Character prompts shape tone, but they do not guarantee unrestricted output or high-quality roleplay.
 - No account system, cloud sync, voice, payments, creator marketplace, or analytics backend is connected yet.
-- The standalone bundled-model APK is large. A separate Android App Bundle + Play Asset Delivery configuration is required for Google Play distribution.
+- The standalone bundled-model APK is large. A separate Android App Bundle + Play for On-device AI AI pack configuration is required for Google Play distribution.
 - Do not treat the self-declared 18+ gate as a substitute for stronger age assurance where required by law or distribution policy.
