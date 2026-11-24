@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 public class MainActivity extends Activity {
     private static final String MODEL_FILE = "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm";
     // The selected model card lists the artifact at 328 MiB. Reject incomplete downloads.
-    private static final long MIN_MODEL_BYTES = 328L * 1024L * 1024L;
+    private static final long MIN_MODEL_BYTES = 320L * 1024L * 1024L;
 
     private WebView webView;
     private SecureStoreBridge secureStore;
@@ -109,9 +109,24 @@ public class MainActivity extends Activity {
         }
     }
 
-    private boolean isBundledModelReady(String expectedChecksum) {
+    private long readBundledModelSize() throws Exception {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                getAssets().open("models/model.size"), StandardCharsets.US_ASCII))) {
+            String value = reader.readLine();
+            if (value == null || !value.matches("[0-9]{1,12}")) {
+                throw new IllegalStateException("Bundled model size metadata is missing or invalid.");
+            }
+            long size = Long.parseLong(value);
+            if (size < MIN_MODEL_BYTES || size > 2_000_000_000L) {
+                throw new IllegalStateException("Bundled model size is outside the supported range.");
+            }
+            return size;
+        }
+    }
+
+    private boolean isBundledModelReady(String expectedChecksum, long expectedModelBytes) {
         File model = getModelFile();
-        if (model == null || !model.isFile() || model.length() < MIN_MODEL_BYTES) return false;
+        if (model == null || !model.isFile() || model.length() != expectedModelBytes) return false;
         File marker = new File(model.getParentFile(), MODEL_FILE + ".sha256");
         if (!marker.isFile()) return false;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(
@@ -131,15 +146,17 @@ public class MainActivity extends Activity {
 
     private void prepareBundledModel() {
         final String expectedChecksum;
+        final long expectedModelBytes;
         try {
             expectedChecksum = readBundledModelChecksum();
+            expectedModelBytes = readBundledModelSize();
         } catch (Exception error) {
             callJs("onBundledModelError",
                     "This APK does not contain the complete AI model. Install the full bundled-model APK.");
             return;
         }
 
-        if (isBundledModelReady(expectedChecksum)) {
+        if (isBundledModelReady(expectedChecksum, expectedModelBytes)) {
             callJs("onBundledModelReady");
             return;
         }
@@ -159,7 +176,7 @@ public class MainActivity extends Activity {
                     throw new IllegalStateException("App storage is unavailable.");
                 }
                 if (partial.exists()) partial.delete();
-                long minimumFreeBytes = MIN_MODEL_BYTES + 64L * 1024L * 1024L;
+                long minimumFreeBytes = expectedModelBytes + 64L * 1024L * 1024L;
                 if (destination.getParentFile().getUsableSpace() < minimumFreeBytes) {
                     throw new IllegalStateException("Free at least 400 MiB of phone storage, then tap Retry model setup.");
                 }
@@ -181,7 +198,7 @@ public class MainActivity extends Activity {
                         output.write(buffer, 0, count);
                         digest.update(buffer, 0, count);
                         copied += count;
-                        int percent = (int) Math.min(100L, copied * 100L / MIN_MODEL_BYTES);
+                        int percent = (int) Math.min(100L, copied * 100L / expectedModelBytes);
                         int progressBucket = percent / 5;
                         if (progressBucket > lastProgressBucket) {
                             lastProgressBucket = progressBucket;
@@ -191,8 +208,8 @@ public class MainActivity extends Activity {
                     output.getFD().sync();
                 }
 
-                if (copied < MIN_MODEL_BYTES) {
-                    throw new IllegalStateException("The bundled AI model is incomplete.");
+                if (copied != expectedModelBytes) {
+                    throw new IllegalStateException("The bundled AI model size does not match its build metadata.");
                 }
                 if (Thread.currentThread().isInterrupted()) {
                     throw new InterruptedException("Model setup was paused. Open the app to retry.");
@@ -265,7 +282,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean hasModel() {
             try {
-                return isBundledModelReady(readBundledModelChecksum());
+                return isBundledModelReady(readBundledModelChecksum(), readBundledModelSize());
             } catch (Exception ignored) {
                 return false;
             }
@@ -279,7 +296,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void loadModel(String systemInstruction, String historyJson) {
             File file = getModelFile();
-            if (file == null || !file.isFile() || file.length() < MIN_MODEL_BYTES) {
+            if (file == null || !hasModel()) {
                 callJs("onAiError", "The built-in AI model is not ready yet. Open Settings and retry model setup.");
                 return;
             }
