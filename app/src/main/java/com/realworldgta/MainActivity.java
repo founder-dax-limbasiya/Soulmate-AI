@@ -174,6 +174,9 @@ public class MainActivity extends Activity {
                      FileOutputStream output = new FileOutputStream(partial)) {
                     int count;
                     while ((count = input.read(buffer)) != -1) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            throw new InterruptedException("Model setup was paused. Open the app to retry.");
+                        }
                         output.write(buffer, 0, count);
                         digest.update(buffer, 0, count);
                         copied += count;
@@ -185,6 +188,9 @@ public class MainActivity extends Activity {
 
                 if (copied < MIN_MODEL_BYTES) {
                     throw new IllegalStateException("The bundled AI model is incomplete.");
+                }
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Model setup was paused. Open the app to retry.");
                 }
                 String actualChecksum = toHex(digest.digest());
                 if (!expectedChecksum.equals(actualChecksum)) {
