@@ -209,7 +209,7 @@ const seedCharacters=[
 {id:"zara",name:"Zara",age:23,emoji:"🖤",gradient:"linear-gradient(145deg,#9b5d70,#423c65)",role:"The mysterious one",description:"A little mysterious, sharply funny and full of unexpected stories.",tags:["Mystery","Sarcastic","Story"],bio:"Zara is a fictional 23-year-old adult. She is mysterious, clever, dryly funny and curious. She enjoys suspenseful stories and clever teasing."},
 {id:"noah",name:"Noah",age:26,emoji:"☀️",gradient:"linear-gradient(145deg,#bd8050,#62528c)",role:"The easygoing best friend",description:"Chill, caring and always ready with a ridiculous joke.",tags:["Best friend","Funny","Supportive"],bio:"Noah is a fictional 26-year-old adult. He is easygoing, supportive, funny and thoughtful. He values honest conversation and friendly warmth."}
 ];
-let state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};
+let state={ageVerified:false,onboardingDone:false,analyticsConsent:false,allowMeteredDownloads:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};
 let aiReady=false,activeAssistantId=null,activeAssistantCharacterId=null,downloadTimer=null,downloadId=null;
 const app=document.getElementById("app");
 const native=window.SoulmateNative||null;
@@ -240,10 +240,11 @@ state.ageVerified=true;save();renderOnboarding();
 };
 }
 function renderOnboarding(){
-app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your chats and character profiles stay on this phone in this build. You decide what to keep.</p><div class="gate-card"><div class="row"><strong>Private conversations</strong><span class="pill"><span class="dot"></span>Always on</span></div><p>Chat text and saved character profiles are stored locally using Android Keystore-backed encryption. Nothing is uploaded to a Soulmate AI server.</p></div><div class="gate-card"><div class="row"><strong>Anonymous usage analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Optional. Off by default. Analytics collection is not connected in this build, so no usage data is currently sent, even if you change this preference.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can revisit privacy preferences in Settings. This age check is self-declared and may not meet every jurisdiction's age-assurance requirements.</p></div>';
+app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your chats and character profiles stay on this phone in this build. You decide what to keep.</p><div class="gate-card"><div class="row"><strong>Private conversations</strong><span class="pill"><span class="dot"></span>Always on</span></div><p>Chat text and saved character profiles are stored locally using Android Keystore-backed encryption. Nothing is uploaded to a Soulmate AI server.</p></div><div class="gate-card"><div class="row"><strong>Anonymous usage analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Optional. Off by default. Analytics collection is not connected in this build, so no usage data is currently sent, even if you change this preference.</p></div><div class="gate-card"><div class="row"><strong>AI model · about 328 MiB</strong><span class="pill">AUTO DOWNLOAD</span></div><p>After setup, Soulmate starts downloading its AI model in the background over Wi-Fi. It will use mobile data only when you enable the option below.</p><div class="row"><span style="font-size:11px;font-weight:700">Allow mobile-data download</span><button class="switch '+(state.allowMeteredDownloads?'on':'')+'" id="mobileDataSwitch" aria-label="Allow mobile data for model download"></button></div></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can revisit privacy preferences in Settings. This age check is self-declared and may not meet every jurisdiction's age-assurance requirements.</p></div>';
 document.getElementById("analyticsSwitch").classList.toggle("on",!!state.analyticsConsent);
 document.getElementById("analyticsSwitch").onclick=function(){state.analyticsConsent=!state.analyticsConsent;this.classList.toggle("on",state.analyticsConsent);};
-document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");};
+document.getElementById("mobileDataSwitch").onclick=function(){state.allowMeteredDownloads=!state.allowMeteredDownloads;this.classList.toggle("on",state.allowMeteredDownloads);save();};
+document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");maybeAutoDownloadModel();};
 }
 function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>ON THIS DEVICE</div></div>';}
 function nav(active){return '<div class="bottomnav">'+[['discover','⌂','Discover'],['chats','◷','Chats'],['create','＋','Create'],['settings','≡','Settings']].map(([id,icon,label])=>'<button class="nav-item '+(active===id?'active':'')+'" data-tab="'+id+'"><span class="nav-icon">'+icon+'</span>'+label+'</button>').join("")+'</div>';}
@@ -268,7 +269,7 @@ return '<div class="scroll"><div class="small-kicker">CHARACTER STUDIO</div><div
 
 function renderSettings(){
 const installed=isInstalled();
-return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · approximately 328 MiB</div></div><span class="pill">'+(installed?'DOWNLOADED':'NOT INSTALLED')+'</span></div><div class="progress"><div class="progress-fill" id="downloadProgress"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is on this phone. Load it to start chatting.':'Download the model once. After that, inference runs locally and can work offline.')+'</div><div class="feature-row"><button class="secondary" style="flex:1" id="downloadModel" '+(installed?'disabled':'')+'>'+(installed?'Model downloaded':'Download model')+'</button><button class="primary" style="flex:1" id="loadModel" '+(installed?'':'disabled')+'>'+(aiReady?'Reload AI':'Load local AI')+'</button></div><div class="note" style="margin-top:11px">The model is not included in the APK. Keep at least 1.5–2 GB of free RAM during generation. Low-memory phones may struggle.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history and character profiles are saved on this device using AES-GCM encryption. No chat contents or prompts are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Personal context</div><div class="panel-copy">Add a few things you'd like your characters to know, such as your preferred language, interests or conversation style. This is optional, editable and stored only on this phone.</div><textarea class="field" id="personalNotes" maxlength="1500" rows="4" placeholder="A little about me…">'+esc(state.personalNotes||"")+'</textarea><div class="row"><span class="note">Up to 1,500 characters · Never uploaded</span><button class="secondary" id="savePersonalNotes">Save notes</button></div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. This also removes your age-gate preference.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.3.2<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
+return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · approximately 328 MiB</div></div><span class="pill">'+(installed?'DOWNLOADED':'NOT INSTALLED')+'</span></div><div class="progress"><div class="progress-fill" id="downloadProgress"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is on this phone. Load it to start chatting.':'Download the model once. After that, inference runs locally and can work offline.')+'</div><div class="feature-row"><button class="secondary" style="flex:1" id="downloadModel" '+(installed?'disabled':'')+'>'+(installed?'Model downloaded':'Download model')+'</button><button class="primary" style="flex:1" id="loadModel" '+(installed?'':'disabled')+'>'+(aiReady?'Reload AI':'Load local AI')+'</button></div><div class="row" style="margin-top:13px"><div style="flex:1"><div style="font-size:12px;font-weight:700">Allow mobile data</div><div class="panel-copy">Off by default. The 328 MiB model downloads over Wi-Fi unless you enable this.</div></div><button class="switch '+(state.allowMeteredDownloads?'on':'')+'" id="mobileDataSetting" aria-label="Allow mobile data for model download"></button></div><div class="note" style="margin-top:11px">The model is downloaded automatically after setup. It is not bundled into this APK. Keep at least 1.5–2 GB of free RAM during generation; lower-memory phones may struggle.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history and character profiles are saved on this device using AES-GCM encryption. No chat contents or prompts are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Personal context</div><div class="panel-copy">Add a few things you'd like your characters to know, such as your preferred language, interests or conversation style. This is optional, editable and stored only on this phone.</div><textarea class="field" id="personalNotes" maxlength="1500" rows="4" placeholder="A little about me…">'+esc(state.personalNotes||"")+'</textarea><div class="row"><span class="note">Up to 1,500 characters · Never uploaded</span><button class="secondary" id="savePersonalNotes">Save notes</button></div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. This also removes your age-gate preference.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.3.2<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
 }
 function renderMain(tab){
 if(tab)state.selectedTab=tab;
@@ -353,20 +354,32 @@ const download=document.getElementById("downloadModel");
 if(download)download.onclick=startDownload;
 const loadButton=document.getElementById("loadModel");
 if(loadButton)loadButton.onclick=loadLocalModel;
+const mobileData=document.getElementById("mobileDataSetting");
+if(mobileData)mobileData.onclick=function(){state.allowMeteredDownloads=!state.allowMeteredDownloads;save();try{native.cancelModelDownload();}catch(e){}downloadId=null;renderMain("settings");if(!isInstalled())startDownload(true);toast(state.allowMeteredDownloads?"Mobile-data downloads enabled. The model download is restarting.":"Wi-Fi-only downloads enabled. The model download is restarting.");};
 const notesSave=document.getElementById("savePersonalNotes");
 if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
 const clear=document.getElementById("clearData");
 if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;renderAgeGate();toast("Local data deleted.");};
 }
-function startDownload(){
-if(!native){toast("Model downloads are available in the Android app.");return;}
-const button=document.getElementById("downloadModel");if(button)button.disabled=true;
+function maybeAutoDownloadModel(){
+if(!native||isInstalled())return;
 try{
-const result=JSON.parse(native.downloadModel());
-if(result.status==="already_downloaded"){renderMain("settings");toast("Model already downloaded.");return;}
-if(!result.id){toast("Could not start the model download.");if(button)button.disabled=false;return;}
-downloadId=result.id;pollDownload();
-}catch(e){toast("Could not start download.");if(button)button.disabled=false;}
+const current=JSON.parse(native.getCurrentDownloadStatus());
+if(current.status==="complete")return;
+if(current.id&&["queued","downloading","paused"].includes(current.status)){downloadId=current.id;pollDownload();return;}
+if(current.status==="not_started")startDownload(true);
+}catch(e){console.warn("Could not resume model download status",e);}
+}
+function startDownload(silent){
+if(!native){if(!silent)toast("Model downloads are available in the Android app.");return;}
+try{
+const result=JSON.parse(native.downloadModel(!!state.allowMeteredDownloads));
+if(result.status==="already_downloaded"){downloadId=null;if(!silent)toast("Model already downloaded.");return;}
+if(!result.id){if(!silent)toast("Could not start the model download.");return;}
+downloadId=result.id;
+if(!silent)toast(state.allowMeteredDownloads?"AI model download started.":"AI model download queued for Wi-Fi.");
+pollDownload();
+}catch(e){if(!silent)toast("Could not start download.");}
 }
 function pollDownload(){
 if(downloadTimer)clearInterval(downloadTimer);
@@ -376,11 +389,24 @@ const result=JSON.parse(native.getDownloadStatus(downloadId));
 const fill=document.getElementById("downloadProgress");
 if(fill&&result.progress!=null)fill.style.width=result.progress+"%";
 const label=document.getElementById("modelStatus");
-if(label)label.textContent=result.status==="downloading"?"Downloading model… "+(result.progress||0)+"%":result.status==="queued"?"Waiting for download…":result.status;
-if(result.status==="complete"){clearInterval(downloadTimer);downloadTimer=null;toast("Model downloaded. Tap Load local AI.");renderMain("settings");}
-else if(["failed","invalid_file","error","not_found"].includes(result.status)){clearInterval(downloadTimer);downloadTimer=null;toast("Download did not complete. Check your connection and try again.");renderMain("settings");}
-}catch(e){clearInterval(downloadTimer);downloadTimer=null;toast("Could not read download status.");renderMain("settings");}
-},900);
+if(label){
+if(result.status==="downloading")label.textContent="Downloading AI model… "+(result.progress||0)+"%";
+else if(result.status==="queued")label.textContent=state.allowMeteredDownloads?"Model download queued…":"Waiting for Wi-Fi to download the 328 MiB model…";
+else if(result.status==="paused")label.textContent="Download paused. Connect to Wi-Fi or allow mobile data in Settings.";
+else label.textContent=result.status;
+}
+if(result.status==="complete"){
+clearInterval(downloadTimer);downloadTimer=null;downloadId=null;
+toast("AI model downloaded. Open Settings and load local AI.");
+if(state.selectedTab==="settings")renderMain("settings");
+}
+else if(["failed","invalid_file","error","not_found"].includes(result.status)){
+clearInterval(downloadTimer);downloadTimer=null;downloadId=null;
+toast("AI model download did not complete. Check your connection and retry in Settings.");
+if(state.selectedTab==="settings")renderMain("settings");
+}
+}catch(e){clearInterval(downloadTimer);downloadTimer=null;downloadId=null;}
+},1200);
 }
 function loadLocalModel(){
 if(!native||!isInstalled()){toast("Download the model first.");return;}
@@ -407,6 +433,7 @@ load();
 if(!state.ageVerified){renderAgeGate();return;}
 if(!state.onboardingDone){renderOnboarding();return;}
 renderMain(state.selectedTab||"discover");
+maybeAutoDownloadModel();
 }
 init();
 })();
