@@ -23,7 +23,7 @@ The standalone APK contains the approximately 328 MiB `Qwen3-0.6B_dynamic_wi4b32
 
 On first launch after onboarding, the app copies the model from the APK into private app storage and checks the copied file against the packaged SHA-256 checksum. This copy is required because LiteRT-LM's Android Kotlin `EngineConfig` accepts a filesystem model path. The model is then loaded automatically on-device. No network permission is requested and chat inference works offline.
 
-The direct-install APK will be substantially larger than a normal app (roughly 350 MiB or more). After installation, keep around 700 MiB free for first-run model preparation and about 2 GiB of available memory for model loading/generation; actual device requirements vary. The APK is intended for direct installation/testing, not a Google Play signed-APK upload. Google Play distribution needs an Android App Bundle with a Play Asset Delivery pack for the model.
+The direct-install APK will be substantially larger than a normal app (roughly 350 MiB or more). After installation, keep around 700 MiB free for first-run model preparation and about 2 GiB of available memory for model loading/generation; actual device requirements vary. The APK is intended for direct installation/testing, not a Google Play signed-APK upload. Google Play distribution needs an Android App Bundle with a Play for On-device AI AI pack for the model (install-time or fast-follow delivery).
 
 ## Model and runtime
 
