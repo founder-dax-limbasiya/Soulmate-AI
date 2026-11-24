@@ -3,6 +3,7 @@ package com.realworldgta;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -33,6 +34,8 @@ public class MainActivity extends Activity {
     private SecureStoreBridge secureStore;
     private LocalAiEngine localAiEngine;
     private long activeDownloadId = -1L;
+    private SharedPreferences downloadPreferences;
+    private static final String DOWNLOAD_ID_KEY = "model_download_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +49,8 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(systemUiFlags);
 
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        downloadPreferences = getSharedPreferences("soulmate_download_state", MODE_PRIVATE);
+        activeDownloadId = downloadPreferences.getLong(DOWNLOAD_ID_KEY, -1L);
         secureStore = new SecureStoreBridge(this);
         localAiEngine = new LocalAiEngine(this, new LocalAiEngine.Listener() {
             @Override public void onStatus(String status, String detail) {
@@ -137,7 +142,28 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String downloadModel() {
+        public String getCurrentDownloadStatus() {
+            try {
+                if (hasModel()) return new JSONObject().put("status", "complete").toString();
+                if (activeDownloadId == -1L) {
+                    return new JSONObject().put("status", "not_started").toString();
+                }
+                JSONObject current = queryDownload(activeDownloadId);
+                String status = current.optString("status");
+                if ("not_found".equals(status)) {
+                    activeDownloadId = -1L;
+                    downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
+                    return new JSONObject().put("status", "not_started").toString();
+                }
+                current.put("id", String.valueOf(activeDownloadId));
+                return current.toString();
+            } catch (Exception error) {
+                return safeJson("error", error.getMessage());
+            }
+        }
+
+        @JavascriptInterface
+        public String downloadModel(boolean allowMetered) {
             try {
                 File file = getModelFile();
                 if (file == null) return new JSONObject().put("status", "storage_unavailable").toString();
@@ -147,28 +173,51 @@ public class MainActivity extends Activity {
 
                 if (activeDownloadId != -1L) {
                     JSONObject current = queryDownload(activeDownloadId);
-                    if ("downloading".equals(current.optString("status"))
-                            || "queued".equals(current.optString("status"))) {
+                    String status = current.optString("status");
+                    if ("downloading".equals(status) || "queued".equals(status)
+                            || "paused".equals(status)) {
+                        current.put("id", String.valueOf(activeDownloadId));
                         return current.toString();
                     }
+                    downloadManager.remove(activeDownloadId);
+                    activeDownloadId = -1L;
+                    downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
                 }
 
+                if (file.exists()) file.delete();
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(MODEL_URL));
                 request.setTitle("Soulmate AI model");
                 request.setDescription("Downloading the on-device Qwen3 model (about 328 MiB)");
-                request.setAllowedOverMetered(true);
+                request.setAllowedOverMetered(allowMetered);
                 request.setAllowedOverRoaming(false);
                 request.setNotificationVisibility(
                         DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                 request.setDestinationInExternalFilesDir(
                         MainActivity.this, Environment.DIRECTORY_DOWNLOADS, MODEL_FILE);
                 activeDownloadId = downloadManager.enqueue(request);
+                downloadPreferences.edit().putLong(DOWNLOAD_ID_KEY, activeDownloadId).apply();
                 return new JSONObject()
                         .put("status", "queued")
                         .put("id", String.valueOf(activeDownloadId))
                         .toString();
             } catch (Exception error) {
                 return safeJson("error", error.getMessage());
+            }
+        }
+
+        @JavascriptInterface
+        public boolean cancelModelDownload() {
+            try {
+                if (activeDownloadId != -1L) downloadManager.remove(activeDownloadId);
+                activeDownloadId = -1L;
+                downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
+                File file = getModelFile();
+                if (file != null && file.exists() && file.length() < MIN_MODEL_BYTES) {
+                    file.delete();
+                }
+                return true;
+            } catch (Exception error) {
+                return false;
             }
         }
 
