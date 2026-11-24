@@ -351,7 +351,7 @@ function wireSettings(){
 const analytics=document.getElementById("analyticsSetting");
 if(analytics)analytics.onclick=function(){state.analyticsConsent=!state.analyticsConsent;save();renderMain("settings");toast("Preference saved on this phone. Analytics is not connected in this build.");};
 const download=document.getElementById("downloadModel");
-if(download)download.onclick=startDownload;
+if(download)download.onclick=()=>startDownload(false);
 const loadButton=document.getElementById("loadModel");
 if(loadButton)loadButton.onclick=loadLocalModel;
 const mobileData=document.getElementById("mobileDataSetting");
