@@ -12,4 +12,4 @@ The selected model is the 328 MiB dynamic INT4 artifact `Qwen3-0.6B_dynamic_wi4b
 
 Full upstream license texts are included in the built APK at `assets/licenses/Qwen3-0.6B-LICENSE.txt` and `assets/licenses/LiteRT-LM-LICENSE.txt`. The model copyright notice identifies Alibaba Cloud (2024). The weights are redistributed under the Apache-2.0 license stated by the upstream model repositories.
 
-The standalone APK is for direct installation/testing. A future Google Play release must use an Android App Bundle and an appropriate Play Asset Delivery model pack because the model makes a single APK too large for Play's signed-APK download limit.
+The standalone APK is for direct installation/testing. A future Google Play release must use an Android App Bundle with a Play for On-device AI AI pack, because this single APK is too large for Google Play signed-APK delivery.
