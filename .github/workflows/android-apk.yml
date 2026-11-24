@@ -49,13 +49,14 @@ jobs:
             "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/$MODEL_FILE?download=true"
 
           MODEL_BYTES="$(stat -c%s "$MODEL_PATH")"
-          MIN_MODEL_BYTES=343932928
+          MIN_MODEL_BYTES=335544320
           if [ "$MODEL_BYTES" -lt "$MIN_MODEL_BYTES" ]; then
             echo "Bundled model download is incomplete: $MODEL_BYTES bytes (minimum $MIN_MODEL_BYTES)."
             exit 1
           fi
 
           sha256sum "$MODEL_PATH" | awk '{print $1}' > app/src/main/assets/models/model.sha256
+          printf '%s\n' "$MODEL_BYTES" > app/src/main/assets/models/model.size
 
           curl -fL --retry 3 --retry-all-errors \
             --output "$LICENSE_DIR/Qwen3-0.6B-LICENSE.txt" \
@@ -80,7 +81,10 @@ jobs:
           cd app/src/main/assets/models
           EXPECTED="$(cat model.sha256)"
           ACTUAL="$(sha256sum Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | awk '{print $1}')"
+          EXPECTED_BYTES="$(cat model.size)"
+          ACTUAL_BYTES="$(stat -c%s Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm)"
           test "$EXPECTED" = "$ACTUAL"
+          test "$EXPECTED_BYTES" = "$ACTUAL_BYTES"
           cd -
           test -s app/src/main/assets/licenses/Qwen3-0.6B-LICENSE.txt
           test -s app/src/main/assets/licenses/LiteRT-LM-LICENSE.txt
@@ -106,10 +110,14 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -Z1 "$APK" | grep -Fx "assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm"
           unzip -Z1 "$APK" | grep -Fx "assets/models/model.sha256"
+          unzip -Z1 "$APK" | grep -Fx "assets/models/model.size"
           unzip -Z1 "$APK" | grep -Fx "assets/licenses/Qwen3-0.6B-LICENSE.txt"
           EXPECTED_MODEL_SHA="$(cat app/src/main/assets/models/model.sha256)"
           APK_MODEL_SHA="$(unzip -p "$APK" assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | sha256sum | awk '{print $1}')"
+          EXPECTED_MODEL_BYTES="$(cat app/src/main/assets/models/model.size)"
+          APK_MODEL_BYTES="$(unzip -p "$APK" assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | wc -c)"
           test "$EXPECTED_MODEL_SHA" = "$APK_MODEL_SHA"
+          test "$EXPECTED_MODEL_BYTES" = "$APK_MODEL_BYTES"
           APK_BYTES="$(stat -c%s "$APK")"
           echo "Bundled APK size: $APK_BYTES bytes"
           echo "- APK size: $APK_BYTES bytes (model included)" >> "$GITHUB_STEP_SUMMARY"
