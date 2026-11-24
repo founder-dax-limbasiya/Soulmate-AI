@@ -12,13 +12,14 @@ An Android-first, privacy-first AI companion foundation. The current build runs 
 - AES-GCM encrypted local app state, with the encryption key held by Android Keystore.
 - Optional analytics consent preference is off by default. No analytics endpoint or cloud upload is connected in this build.
 - On-device Qwen3-0.6B LiteRT-LM model download and CPU inference.
+- The model download is automatically queued after onboarding, using Wi-Fi by default. Users can explicitly opt into mobile-data downloads; Android's Download Manager continues the download in the background and the app restores its download status after relaunch.
 - Chat text, personal context and prompts are not sent to a Soulmate AI server in this build.
 
 ## Build
 
 The GitHub Actions workflow builds a debug APK with Java 17 and Gradle 8.9.
 
-The model is deliberately **not** bundled into the APK. From the app's Model settings, a user can download the approximately 328 MiB file from the public Hugging Face model repository. Once downloaded, inference runs locally and can work offline.
+The model is deliberately **not** bundled into the APK. After onboarding, the app automatically queues the approximately 328 MiB model download through Android Download Manager. Wi-Fi is the default; mobile-data downloads require the user to enable that option during onboarding or in Settings. The download can continue in the background and resumes its status when the app is reopened. Once downloaded, inference runs locally and can work offline. In a standalone APK, the model download starts after the app is first opened; it is not physically embedded in the APK.
 
 ## Model and runtime
 
