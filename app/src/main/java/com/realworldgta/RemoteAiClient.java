@@ -148,6 +148,16 @@ public final class RemoteAiClient {
         }
     }
 
+    private JSONObject makeMessage(String role, String content) {
+        JSONObject message = new JSONObject();
+        try {
+            message.put("role", role);
+            message.put("content", content);
+        } catch (Exception ignored) {
+        }
+        return message;
+    }
+
     public void sendMessage(String prompt) {
         String text = prompt == null ? "" : prompt.trim();
         if (text.isEmpty() || text.length() > MAX_MESSAGE_CHARS) {
@@ -166,12 +176,12 @@ public final class RemoteAiClient {
         final String conversationIdAtSend = activeConversationId;
         final JSONArray messages = new JSONArray();
         if (!systemInstruction.isEmpty()) {
-            messages.put(new JSONObject().put("role", "system").put("content", systemInstruction));
+            messages.put(makeMessage("system", systemInstruction));
         }
         synchronized (history) {
             for (JSONObject item : history) messages.put(item);
         }
-        messages.put(new JSONObject().put("role", "user").put("content", text));
+        messages.put(makeMessage("user", text));
 
         final StringBuilder assistantText = new StringBuilder();
         try {
