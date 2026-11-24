@@ -2,7 +2,7 @@ name: Build Soulmate AI APK
 
 on:
   push:
-    branches: [main, feature/cloud-ai-small-apk]
+    branches: [main, feature/on-device-model-download]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -37,9 +37,6 @@ jobs:
       - name: Install Android platform and build tools
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Check cloud gateway Python syntax
-        run: python3 -m py_compile server/gateway/app.py
-
       - name: Check embedded UI JavaScript
         run: |
           python3 - <<'PY'
@@ -52,10 +49,10 @@ jobs:
           PY
           node --check /tmp/soulmate-ui.js
 
-      - name: Build lightweight cloud-connected APK
+      - name: Build on-device AI APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify the APK does not contain model weights
+      - name: Verify the APK does not bundle model weights
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
@@ -64,17 +61,17 @@ jobs:
             exit 1
           fi
           APK_BYTES="$(stat -c%s "$APK")"
-          echo "Lightweight APK size: $APK_BYTES bytes"
+          echo "On-device AI APK size: $APK_BYTES bytes"
           if [ "$APK_BYTES" -gt 60000000 ]; then
             echo "APK is unexpectedly larger than 60 MB."
             exit 1
           fi
-          echo "- APK size: $APK_BYTES bytes; no model weights bundled." >> "$GITHUB_STEP_SUMMARY"
+          echo "- APK size: $APK_BYTES bytes; model weights download separately on the phone." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: soulmate-ai-cloud-debug-apk
+          name: soulmate-ai-on-device-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

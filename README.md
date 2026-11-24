@@ -1,39 +1,46 @@
 # Soulmate AI
 
-Soulmate AI is an Android-first fictional adult companion app. The Android client stays lightweight: chat UI, character profiles and encrypted chat history live on the phone, while open-source model inference runs on a separately hosted cloud server.
+Soulmate AI is an Android-first, on-device AI companion app for fictional adult characters.
+
+## How AI works
+
+- **Inference runs on each user's own Android phone.** There is no Soulmate AI cloud inference server, Oracle VM, API key or account needed.
+- The APK includes the app, UI and LiteRT-LM runtime, but **does not bundle model weights**.
+- On first setup, the user explicitly downloads the open-source Qwen3-0.6B model (about 328 MiB) from a pinned Hugging Face revision into app-private phone storage.
+- The app calculates a SHA-256 checksum while downloading and saves the model only after the full download passes the minimum-size check.
+- After the one-time model download, chats run offline. Chat text, character prompts and personal notes stay on the phone.
+- Internet permission is used only for the user-initiated model download. No remote chat inference endpoint is configured.
 
 ## Android app
 
-- Editorial-style Android WebView UI with Discover, Chats, Create Character and Settings.
+- Editorial-style WebView UI with Discover, Chats, Create Character and Settings.
 - Self-declared 18+ entry gate; this is not identity or age verification.
 - Fictional adult character profiles and user-created characters.
 - AES-GCM encrypted local state, with the key protected by Android Keystore.
-- Conversation history stays on the phone. When a user sends a message, the character system prompt, optional personal notes and up to 12 recent messages are sent to the configured HTTPS AI server for generation.
-- Streaming replies over HTTPS using OkHttp.
-- The app does not bundle or download model weights. Expected APK size is in the normal Android-app range (CI enforces a 60 MB upper bound).
+- LiteRT-LM 0.19.1 on-device inference using the CPU backend.
+- The model is saved under app-private storage and remains installed when local chat data is cleared.
 
-## Cloud inference server
+## First-run requirements
 
-The `server/` directory contains an open-source deployment stack:
-
-- Qwen3-4B GGUF, Q4_K_M quantization (Apache-2.0 upstream model).
-- llama.cpp server for OpenAI-compatible streaming inference.
-- FastAPI gateway with request-size limits, bounded message context, IP-based beta rate limiting and one concurrent generation at a time.
-- Caddy for automatic HTTPS.
-
-See [server/README.md](server/README.md) for deployment instructions. The model is downloaded once onto the server's persistent volume, not to each user's phone.
-
-A small Oracle Cloud Ampere A1 Always Free allocation (where available) can be used for a private beta, but CPU generation may be slow. Current free resource quotas and regional capacity must be checked in the Oracle Console before deployment. Public launch needs stronger user authentication, abuse controls, monitoring, privacy disclosures and capacity planning.
+- Internet access is needed once to download approximately 328 MiB. Wi-Fi is recommended.
+- Keep at least about 410 MiB of free storage for the download and installation.
+- Keep the app open during download. A failed or incomplete download is discarded and can be retried.
+- Model loading needs substantial free RAM; on-device performance varies by chipset and available memory. Some lower-memory phones may not be able to load the model reliably.
+- Once downloaded and loaded, chatting does not need Internet.
 
 ## Build Android APK
 
-GitHub Actions builds the lightweight debug APK with Java 17 and Gradle 8.9. The build verifies that no `.litertlm`, `.gguf` or `.safetensors` model weights are included in the APK.
+GitHub Actions builds a debug APK with Java 17 and Gradle 8.9. The build verifies that no `.litertlm`, `.gguf` or `.safetensors` model weights are packaged in the APK and enforces a 60 MiB size ceiling.
+
+## Open-source components
+
+- LiteRT-LM Android runtime: https://github.com/google-ai-edge/LiteRT-LM
+- Qwen3-0.6B LiteRT model: https://huggingface.co/litert-community/Qwen3-0.6B
+- Apache-2.0 upstream model license.
 
 ## Privacy and limitations
 
-- Chat history and character profiles are stored encrypted on the phone.
-- Messages, character instructions and recent context are transmitted to the AI server selected in Settings. Do not connect to a server you do not trust.
-- The included gateway does not store chat content in a database. The server operator still processes requests and may see network metadata; this is not end-to-end encryption.
-- No account system, cloud chat sync, voice, payments or analytics backend is connected yet.
-- The default cloud server URL is intentionally unset. The app needs a deployed HTTPS gateway before AI chat can work.
-- The initial cloud stack is a private-beta architecture, not a production service guarantee.
+- Conversation history, user-created characters and personal notes are stored locally; chat state is AES-GCM encrypted.
+- No account system, cloud chat sync, voice, payments or analytics backend is connected.
+- This is an early beta. The small 0.6B model is a lightweight local companion model, not a frontier-scale model; reply quality and speed depend on the handset.
+- The 18+ gate is self-declared and is not verified age assurance.

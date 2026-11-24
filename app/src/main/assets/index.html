@@ -209,8 +209,8 @@ const seedCharacters=[
 {id:"zara",name:"Zara",age:23,emoji:"🖤",gradient:"linear-gradient(145deg,#9b5d70,#423c65)",role:"The mysterious one",description:"A little mysterious, sharply funny and full of unexpected stories.",tags:["Mystery","Sarcastic","Story"],bio:"Zara is a fictional 23-year-old adult. She is mysterious, clever, dryly funny and curious. She enjoys suspenseful stories and clever teasing."},
 {id:"noah",name:"Noah",age:26,emoji:"☀️",gradient:"linear-gradient(145deg,#bd8050,#62528c)",role:"The easygoing best friend",description:"Chill, caring and always ready with a ridiculous joke.",tags:["Best friend","Funny","Supportive"],bio:"Noah is a fictional 26-year-old adult. He is easygoing, supportive, funny and thoughtful. He values honest conversation and friendly warmth."}
 ];
-let state={ageVerified:false,onboardingDone:false,analyticsConsent:false,serverUrl:"",selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};
-let aiReady=false,activeAssistantId=null,activeAssistantCharacterId=null;
+let state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};
+let aiReady=false,activeAssistantId=null,activeAssistantCharacterId=null,modelBootstrapStarted=false;
 const app=document.getElementById("app");
 const native=window.SoulmateNative||null;
 function esc(value){return String(value==null?"":value).replace(/[&<>"']/g,function(c){return({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]);});}
@@ -219,6 +219,7 @@ function save(){if(!native)return;try{const ok=native.saveEncryptedState(JSON.st
 function load(){if(!native)return;try{const raw=native.loadEncryptedState();if(raw){const restored=JSON.parse(raw);state=Object.assign(state,restored);}}catch(e){toast("Saved data could not be opened. You can clear local data in Settings.");}}
 function allCharacters(){return seedCharacters.concat(Array.isArray(state.customCharacters)?state.customCharacters:[]);}
 function characterById(id){return allCharacters().find(c=>c.id===id)||seedCharacters[0];}
+function isInstalled(){try{return !!(native&&native.hasModel());}catch(e){return false;}}
 function localHistory(id){return Array.isArray(state.messages[id])?state.messages[id]:[];}
 function characterPrompt(c){
 const savedNotes=String(state.personalNotes||"").trim();
@@ -239,12 +240,12 @@ state.ageVerified=true;save();renderOnboarding();
 };
 }
 function renderOnboarding(){
-app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your profile and chat history stay encrypted on this phone. Cloud AI is used only when you send a message.</p><div class="gate-card"><div class="row"><strong>Chats saved on this phone</strong><span class="pill"><span class="dot"></span>Encrypted</span></div><p>Chat history and character profiles are protected with Android Keystore-backed encryption.</p></div><div class="gate-card"><div class="row"><strong>Cloud AI replies</strong><span class="pill">Internet required</span></div><p>Your message, character instructions and recent conversation context are sent to the AI server you configure. The gateway does not save chat history in a database. Use only a server you trust.</p></div><div class="gate-card"><div class="row"><strong>Anonymous analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Off by default. No analytics service is connected in this build.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can change the AI server in Settings. The age check is self-declared and may not meet local age-assurance requirements.</p></div>';
+app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your chats and character profiles stay on this phone in this build. You decide what to keep.</p><div class="gate-card"><div class="row"><strong>Private conversations</strong><span class="pill"><span class="dot"></span>Always on</span></div><p>Chat text and saved character profiles are stored locally using Android Keystore-backed encryption. Nothing is uploaded to a Soulmate AI server.</p></div><div class="gate-card"><div class="row"><strong>Anonymous usage analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Optional. Off by default. Analytics collection is not connected in this build, so no usage data is currently sent, even if you change this preference.</p></div><div class="gate-card"><div class="row"><strong>Download your on-device AI</strong><span class="pill">~328 MiB</span></div><p>The app downloads the open-source model to this phone only when you tap Download model in Settings. Wi-Fi is recommended. After the one-time download, chats run offline and messages never go to an AI server.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can revisit privacy preferences in Settings. This age check is self-declared and may not meet local age-assurance requirements.</p></div>';
 document.getElementById("analyticsSwitch").classList.toggle("on",!!state.analyticsConsent);
 document.getElementById("analyticsSwitch").onclick=function(){state.analyticsConsent=!state.analyticsConsent;this.classList.toggle("on",state.analyticsConsent);};
-document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");if(native){native.setServerUrl(state.serverUrl||"");native.checkServer();}};
+document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");};
 }
-function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>LOCAL CHATS · CLOUD AI</div></div>';}
+function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>ON THIS DEVICE</div></div>';}
 function nav(active){return '<div class="bottomnav">'+[['discover','⌂','Discover'],['chats','◷','Chats'],['create','＋','Create'],['settings','≡','Settings']].map(([id,icon,label])=>'<button class="nav-item '+(active===id?'active':'')+'" data-tab="'+id+'"><span class="nav-icon">'+icon+'</span>'+label+'</button>').join("")+'</div>';}
 function tone(c){return c.id==="mia"?"tone-mia":c.id==="aria"?"tone-aria":c.id==="zara"?"tone-zara":c.id==="noah"?"tone-noah":"tone-custom";}
 function monogram(c){return esc(String(c.name||"S").trim().charAt(0).toUpperCase()||"S");}
@@ -252,7 +253,7 @@ function card(c){return '<button class="char-card" data-character="'+esc(c.id)+'
 
 function renderDiscover(){
 const chars=allCharacters();
-return '<div class="scroll"><div class="small-kicker">A more personal kind of conversation</div><div class="hero"><div class="hero-kicker">SOULMATE · YOUR PRIVATE SPACE</div><h1>Good conversations start somewhere.</h1><p>Meet original characters, get to know them at your own pace, and keep your chats on this phone.</p><button class="primary" data-tab="settings">Connect your Cloud AI&nbsp; →</button></div><div class="feature-row"><div class="feature"><div class="feature-icon">01</div><strong>Made for you</strong><span>Characters with distinct voices</span></div><div class="feature"><div class="feature-icon">02</div><strong>Kept on device</strong><span>Your chat history stays local</span></div></div><div class="section-row"><div class="section-title">Meet the characters</div><span class="pill">18+ · FICTION</span></div><div class="grid">'+chars.map(card).join("")+'</div><div class="section-row"><div class="section-title">A note on privacy</div></div><div class="panel"><div class="panel-title">Local history, cloud replies</div><div class="panel-copy">Your chat history is encrypted and saved on this phone. When you send a message, its text, character instructions, personal notes and recent context are sent to the HTTPS AI server configured in Settings. Use only a server you trust.</div></div></div>';
+return '<div class="scroll"><div class="small-kicker">A more personal kind of conversation</div><div class="hero"><div class="hero-kicker">SOULMATE · YOUR PRIVATE SPACE</div><h1>Good conversations start somewhere.</h1><p>Meet original characters, get to know them at your own pace, and keep your chats on this phone.</p><button class="primary" data-tab="settings">Set up your private AI&nbsp; →</button></div><div class="feature-row"><div class="feature"><div class="feature-icon">01</div><strong>Made for you</strong><span>Characters with distinct voices</span></div><div class="feature"><div class="feature-icon">02</div><strong>Kept on device</strong><span>Your chat history stays local</span></div></div><div class="section-row"><div class="section-title">Meet the characters</div><span class="pill">18+ · FICTION</span></div><div class="grid">'+chars.map(card).join("")+'</div><div class="section-row"><div class="section-title">A note on privacy</div></div><div class="panel"><div class="panel-title">Your conversations stay here</div><div class="panel-copy">Soulmate currently runs its language model on your phone. Chat text and saved conversation history are not sent to a Soulmate server.</div></div></div>';
 }
 
 function renderChats(){
@@ -266,8 +267,8 @@ return '<div class="scroll"><div class="small-kicker">CHARACTER STUDIO</div><div
 }
 
 function renderSettings(){
-const connected=aiReady;
-return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Cloud AI connection, privacy and your local data.</p><div class="panel"><div class="row"><div><div class="panel-title">Cloud AI server</div><div class="panel-copy">Connect to your Soulmate AI inference server</div></div><span class="pill">'+(connected?'CONNECTED':'NOT CONNECTED')+'</span></div><label for="serverUrl" class="panel-copy" style="display:block;margin-top:14px">HTTPS server address</label><input class="field" id="serverUrl" type="url" maxlength="240" autocomplete="url" placeholder="https://api.your-domain.com" value="'+esc(state.serverUrl||"")+'"><button class="primary" style="width:100%;margin-top:11px" id="connectAi">Save &amp; connect</button><div class="panel-copy" id="modelStatus" style="margin-top:11px">'+(connected?'Cloud AI is connected.':state.serverUrl?'Not connected. Check the address and internet connection.':'Add your HTTPS AI server address to start chatting.')+'</div><div class="note" style="margin-top:10px">The model runs on the server, not on your phone. No AI model is downloaded or stored in this app. Internet is required for replies.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history is saved on this phone using AES-GCM encryption. When you send a message, the message, character instructions and up to 12 recent chat messages are transmitted to your configured server for AI generation. The app gateway does not store chat content in a database; server operators may still process network metadata.</div></div><div class="panel"><div class="panel-title">Personal context</div><div class="panel-copy">Optional notes used to personalize replies. These notes are sent to your configured AI server with chat requests.</div><textarea class="field" id="personalNotes" maxlength="1500" rows="4" placeholder="A little about me…">'+esc(state.personalNotes||"")+'</textarea><div class="row"><span class="note">Up to 1,500 characters · Sent with prompts</span><button class="secondary" id="savePersonalNotes">Save notes</button></div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">Delete your locally saved chats, characters, server address and preferences. This does not delete any server infrastructure.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.5.0<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified age assurance.</div></div></div>';
+const installed=isInstalled();
+return '<div class="scroll"><div class="heading">Settings</div><p class="sub">Your local AI, your privacy and your data.</p><div class="panel"><div class="row"><div><div class="panel-title">On-device AI model</div><div class="panel-copy">Qwen3-0.6B · LiteRT-LM · ~328 MiB</div></div><span class="pill">'+(aiReady?'AI READY':installed?'MODEL READY':modelBootstrapStarted?'PREPARING':'NOT READY')+'</span></div><div class="progress"><div class="progress-fill" id="modelCopyProgress" style="width:'+(installed?'100':'0')+'%"></div></div><div class="panel-copy" id="modelStatus">'+(aiReady?'AI is loaded and ready.':installed?'Model is installed on this phone. Loading or reload AI below.':'Download the model once to this phone. Wi-Fi is recommended; keep the app open during download.')+'</div><div class="feature-row"><button class="primary" style="flex:1" id="loadModel">'+(aiReady?'Reload local AI':installed?'Load local AI':modelBootstrapStarted?'Downloading…':'Download model (~328 MiB)')+'</button></div><div class="note" style="margin-top:11px">The APK contains the app and runtime only. Download the ~328 MiB model once into private phone storage; Wi-Fi is recommended and at least 410 MiB of free storage is needed. After download, AI chat works offline. Model loading may need around 1.5–2 GB of available memory depending on the phone.</div></div><div class="panel"><div class="panel-title">Privacy controls</div><div class="row"><div><div style="font-size:12px;font-weight:700">Anonymous analytics preference</div><div class="panel-copy">Off by default. No analytics endpoint is connected in this version.</div></div><button class="switch '+(state.analyticsConsent?'on':'')+'" id="analyticsSetting" aria-label="Analytics preference"></button></div><div style="height:1px;background:var(--line);margin:14px 0"></div><div class="panel-copy">Chat history and character profiles are saved on this device using AES-GCM encryption. No chat contents or prompts are transmitted to our server in this build.</div></div><div class="panel"><div class="panel-title">Personal context</div><div class="panel-copy">Add a few things you want your characters to know, such as your preferred language, interests or conversation style. This is optional, editable and stored only on this phone.</div><textarea class="field" id="personalNotes" maxlength="1500" rows="4" placeholder="A little about me…">'+esc(state.personalNotes||"")+'</textarea><div class="row"><span class="note">Up to 1,500 characters · Stays on phone</span><button class="secondary" id="savePersonalNotes">Save notes</button></div></div><div class="panel"><div class="panel-title">Your data</div><div class="panel-copy">You can delete your local profile, characters and conversations at any time. The downloaded model remains installed.</div><button class="danger-btn" id="clearData" style="margin-top:13px">Delete all local data</button></div><div class="panel"><div class="panel-title">About this build</div><div class="panel-copy">Early private beta · Version 0.6.0<br>Fictional adult characters only. This is a self-declared 18+ gate, not verified identity or age assurance.</div></div></div>';
 }
 function renderMain(tab){
 if(tab)state.selectedTab=tab;
@@ -283,25 +284,25 @@ function openChat(id){
 state.selectedCharacterId=id;save();
 const c=characterById(id);
 const history=localHistory(id);
-app.innerHTML='<div class="chat-wrap"><div class="chat-head"><button class="back" id="chatBack">‹</button><div class="chat-avatar '+tone(c)+'">'+monogram(c)+'</div><div style="flex:1"><div class="chat-title">'+esc(c.name)+' · '+esc(c.age)+'</div><div class="chat-sub">'+(aiReady?'● Cloud AI ready':'● Connect cloud AI in Settings')+'</div></div><button class="ghost" id="chatOptions">•••</button></div><div class="chat-log" id="chatLog">'+renderMessages(history)+'</div><div class="chat-compose"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Write something…"></textarea><button class="send" id="sendChat">➤</button></div></div>';
+app.innerHTML='<div class="chat-wrap"><div class="chat-head"><button class="back" id="chatBack">‹</button><div class="chat-avatar '+tone(c)+'">'+monogram(c)+'</div><div style="flex:1"><div class="chat-title">'+esc(c.name)+' · '+esc(c.age)+'</div><div class="chat-sub">'+(aiReady?'● Local AI ready':'● Private character chat')+'</div></div><button class="ghost" id="chatOptions">•••</button></div><div class="chat-log" id="chatLog">'+renderMessages(history)+'</div><div class="chat-compose"><textarea class="chat-input" id="chatInput" rows="1" placeholder="Write something…"></textarea><button class="send" id="sendChat">➤</button></div></div>';
 document.getElementById("chatBack").onclick=()=>renderMain("chats");
 document.getElementById("chatOptions").onclick=()=>toast("Conversation options will be added here.");
 document.getElementById("sendChat").onclick=sendMessage;
 document.getElementById("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
 document.getElementById("chatInput").addEventListener("input",function(){this.style.height="43px";this.style.height=Math.min(this.scrollHeight,110)+"px";});
 const log=document.getElementById("chatLog");log.scrollTop=log.scrollHeight;
-if(aiReady&&native)native.startCharacter(id,characterPrompt(c),JSON.stringify(history.slice(-12)));
+if(aiReady&&native)native.startCharacter(characterPrompt(c),JSON.stringify(history.slice(-12)));
 }
 function renderMessages(messages){
 if(!messages.length)return '<div class="empty"><div class="big">A first hello.</div><div style="color:#5d594f;font-weight:700;margin-bottom:6px">A new conversation with '+esc(characterById(state.selectedCharacterId).name)+'</div>Start wherever feels natural.</div>';
-return messages.map(m=>'<div id="'+(m.role==="assistant"&&String(m.at)===activeAssistantId?'last-ai-bubble':'')+'" class="bubble '+(m.role==="user"?"user":"ai")+(m.streaming?' last-ai-bubble':'')+'">'+esc(m.content)+(m.role==="assistant"&&!m.streaming?'<div class="bubble-time">Cloud AI response</div>':'')+'</div>').join("");
+return messages.map(m=>'<div id="'+(m.role==="assistant"&&String(m.at)===activeAssistantId?'last-ai-bubble':'')+'" class="bubble '+(m.role==="user"?"user":"ai")+(m.streaming?' last-ai-bubble':'')+'">'+esc(m.content)+(m.role==="assistant"&&!m.streaming?'<div class="bubble-time">On-device response</div>':'')+'</div>').join("");
 }
 function sendMessage(){
 const input=document.getElementById("chatInput");const text=input.value.trim();
 if(!text)return;
 if(activeAssistantId){toast("One reply is still being generated. Please wait a moment.");return;}
-if(!aiReady){toast("Connect your Cloud AI server in Settings first.");return;}
-if(!native){toast("The secure app bridge is unavailable.");return;}
+if(!aiReady){toast("The built-in AI is still getting ready. Try again in a moment.");return;}
+if(!native){toast("Native local AI bridge is unavailable.");return;}
 const id=state.selectedCharacterId;
 const msgs=localHistory(id);msgs.push({role:"user",content:text,at:Date.now()});
 const assistant={role:"assistant",content:"",at:Date.now(),streaming:true};
@@ -333,17 +334,15 @@ activeAssistantId=null;activeAssistantCharacterId=null;
 window.onAiStatus=function(status,detail){
 if(status==="ready"){
 aiReady=true;
-if(String(detail||"")==="Cloud AI connected."&&state.selectedCharacterId&&native){
+if(state.selectedCharacterId&&native&&!String(detail||"").startsWith("Character ready.")){
 const id=state.selectedCharacterId,c=characterById(id);
-native.startCharacter(id,characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
+native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
 }
-toast(detail||"Cloud AI ready.");
+toast(detail||"Local AI ready.");
 if(state.selectedTab==="settings")renderMain("settings");
 }
-if(status==="offline"){aiReady=false;if(state.selectedTab==="settings")renderMain("settings");}
 if(status==="generating")aiReady=true;
 const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;
-const chatStatus=document.querySelector(".chat-sub");if(chatStatus)chatStatus.textContent=aiReady?"● Cloud AI ready":"● Connect cloud AI in Settings";
 };
 window.onAiError=function(message){
 const id=activeAssistantCharacterId,replyId=activeAssistantId;
@@ -353,26 +352,57 @@ if(target){target.content="I couldn't generate a reply: "+String(message||"Unkno
 if(state.selectedCharacterId===id){const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.textContent=target?target.content:"";bubble.id="";}}
 activeAssistantId=null;activeAssistantCharacterId=null;
 }
-toast(message||"Cloud AI error.");
+toast(message||"Local AI error.");
 };
 function wireSettings(){
 const analytics=document.getElementById("analyticsSetting");
-if(analytics)analytics.onclick=function(){state.analyticsConsent=!state.analyticsConsent;save();renderMain("settings");toast("Preference saved on this phone. Analytics is not connected.");};
-const connect=document.getElementById("connectAi");
-if(connect)connect.onclick=function(){
-const field=document.getElementById("serverUrl");
-const value=String(field?field.value:"").trim().replace(/\/$/,"");
-if(!value){toast("Enter your HTTPS AI server address.");return;}
-if(!/^https:\/\//i.test(value)){toast("Only HTTPS server addresses are allowed.");return;}
-if(!native||!native.setServerUrl(value)){toast("That server address is not valid.");return;}
-state.serverUrl=value;save();aiReady=false;
-const label=document.getElementById("modelStatus");if(label)label.textContent="Checking your AI server…";
-native.checkServer();
-};
+if(analytics)analytics.onclick=function(){state.analyticsConsent=!state.analyticsConsent;save();renderMain("settings");toast("Preference saved on this phone. Analytics is not connected in this build.");};
+const loadButton=document.getElementById("loadModel");
+if(loadButton)loadButton.onclick=loadLocalModel;
 const notesSave=document.getElementById("savePersonalNotes");
-if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(state.selectedCharacterId,characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
+if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
 const clear=document.getElementById("clearData");
-if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters, server address and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,serverUrl:"",selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;renderAgeGate();toast("Local data deleted.");};
+if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters and preferences? The downloaded model remains installed. This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;modelBootstrapStarted=false;renderAgeGate();toast("Local data deleted.");};
+}
+function prepareBundledModel(){
+if(!native){toast("The Android model installer is unavailable.");return;}
+if(modelBootstrapStarted)return;
+modelBootstrapStarted=true;
+const label=document.getElementById("modelStatus");
+if(label&&!isInstalled())label.textContent="Downloading the Qwen3 model to this phone…";
+try{native.prepareBundledModel();}catch(e){window.onBundledModelError("Could not start the model download.");}
+}
+window.onBundledModelProgress=function(percent){
+const progress=Math.max(0,Math.min(100,Number(percent)||0));
+const fill=document.getElementById("modelCopyProgress");
+if(fill)fill.style.width=progress+"%";
+const label=document.getElementById("modelStatus");
+if(label)label.textContent="Downloading Qwen3-0.6B… "+progress+"%";
+};
+window.onBundledModelReady=function(){
+const fill=document.getElementById("modelCopyProgress");
+if(fill)fill.style.width="100%";
+const label=document.getElementById("modelStatus");
+if(label)label.textContent="Model download complete. Loading AI on this phone…";
+if(!aiReady&&native){
+const id=state.selectedCharacterId||"mia",c=characterById(id);
+native.loadModel(characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
+}
+if(state.selectedTab==="settings")renderMain("settings");
+};
+window.onBundledModelError=function(message){
+modelBootstrapStarted=false;
+const label=document.getElementById("modelStatus");
+if(label)label.textContent=String(message||"Could not download the AI model. Check your connection and retry.");
+toast(message||"Could not download the on-device AI model.");
+};
+function loadLocalModel(){
+if(!native||!isInstalled()){toast("The AI model is not ready yet. Download it from Settings.");prepareBundledModel();return;}
+const c=characterById(state.selectedCharacterId||"mia");
+const history=state.selectedCharacterId?localHistory(state.selectedCharacterId).slice(-12):[];
+const label=document.getElementById("modelStatus");if(label)label.textContent="Loading local model…";
+native.loadModel(characterPrompt(c),JSON.stringify(history));
+toast("Loading the AI model on this phone…");
 }
 function openCreator(){
 const modal=document.createElement("div");modal.className="modal-back";modal.innerHTML='<div class="modal"><div class="small-kicker">Original characters only</div><h3>Create your character</h3><label>Character name</label><input class="field" id="newCharName" maxlength="28" placeholder="e.g. Aanya"><label>Age (18+)</label><input class="field" id="newCharAge" type="number" min="18" max="99" value="24"><label>Personality and backstory</label><textarea class="field" id="newCharBio" maxlength="700" rows="4" placeholder="Describe the personality, interests and story…"></textarea><div class="row"><button class="secondary" id="cancelCreator">Cancel</button><button class="primary" id="saveCreator">Create character</button></div><p class="note" style="margin-top:12px">Use fictional adult characters. Do not create real people or characters presented as minors.</p></div>';
@@ -391,10 +421,6 @@ load();
 if(!state.ageVerified){renderAgeGate();return;}
 if(!state.onboardingDone){renderOnboarding();return;}
 renderMain(state.selectedTab||"discover");
-if(native){
-native.setServerUrl(state.serverUrl||"");
-native.checkServer();
-}
 }
 init();
 })();

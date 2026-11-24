@@ -1,17 +1,15 @@
 # Open-source notices
 
-The lightweight Android APK includes:
+The Android application uses:
 
-- **OkHttp 4.12.0** — Apache License 2.0. Source: https://github.com/square/okhttp
+- **LiteRT-LM Android runtime 0.19.1** — Apache License 2.0. Source: https://github.com/google-ai-edge/LiteRT-LM
+- **Qwen3-0.6B LiteRT model artifact** — Apache License 2.0. Model repository: https://huggingface.co/litert-community/Qwen3-0.6B
 - **Android platform APIs** — Android Open Source Project.
 
-The cloud inference deployment in `server/` uses:
+The app downloads `Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm` from the pinned upstream revision
+`e6bb3e4a1eb3f663153f0c1c12b735d64be657a7` on first-run setup. The model is not bundled in the APK.
+Weights are stored in the app's private files directory and used for on-device inference. The download
+is checked with SHA-256 before it is marked ready. Chat messages and prompts are not sent to a
+remote AI inference server.
 
-- **Qwen3-4B** — Apache-2.0. Model card: https://huggingface.co/Qwen/Qwen3-4B
-- **Qwen3-4B GGUF quantizations** — https://huggingface.co/Qwen/Qwen3-4B-GGUF
-- **llama.cpp** — MIT License. Source: https://github.com/ggml-org/llama.cpp
-- **FastAPI** — MIT License. Source: https://github.com/fastapi/fastapi
-- **HTTPX** — BSD-3-Clause. Source: https://github.com/encode/httpx
-- **Caddy** — Apache License 2.0. Source: https://github.com/caddyserver/caddy
-
-Model weights are downloaded to the server's persistent model cache during deployment and are not included in the Android APK. Review the upstream model and runtime license files when pinning/updating versions.
+Review the upstream license texts when updating either dependency or model revision.
