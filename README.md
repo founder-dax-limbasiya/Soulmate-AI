@@ -11,15 +11,19 @@ An Android-first, privacy-first AI companion foundation. The current build runs 
 - Optional user-written personal context (up to 1,500 characters), injected into character instructions and stored only in the encrypted local state.
 - AES-GCM encrypted local app state, with the encryption key held by Android Keystore.
 - Optional analytics consent preference is off by default. No analytics endpoint or cloud upload is connected in this build.
-- On-device Qwen3-0.6B LiteRT-LM model download and CPU inference.
-- The model download is automatically queued after onboarding, using Wi-Fi by default. Users can explicitly opt into mobile-data downloads; Android's Download Manager continues the download in the background and the app restores its download status after relaunch.
+- Qwen3-0.6B LiteRT-LM model bundled inside the standalone APK; no separate model download is required from users.
+- On first launch, the app copies the bundled model into private app storage, validates its SHA-256 checksum, and then loads it locally.
 - Chat text, personal context and prompts are not sent to a Soulmate AI server in this build.
 
 ## Build
 
 The GitHub Actions workflow builds a debug APK with Java 17 and Gradle 8.9.
 
-The model is deliberately **not** bundled into the APK. After onboarding, the app automatically queues the approximately 328 MiB model download through Android Download Manager. Wi-Fi is the default; mobile-data downloads require the user to enable that option during onboarding or in Settings. The download can continue in the background and resumes its status when the app is reopened. Once downloaded, inference runs locally and can work offline. In a standalone APK, the model download starts after the app is first opened; it is not physically embedded in the APK.
+The standalone APK contains the approximately 328 MiB `Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm` model in its assets. GitHub Actions downloads the licensed upstream model during the build, verifies its minimum size, calculates a SHA-256 checksum, and packages both the model and its license notices into the APK. The binary model is not committed to Git history.
+
+On first launch after onboarding, the app copies the model from the APK into private app storage and checks the copied file against the packaged SHA-256 checksum. This copy is required because LiteRT-LM's Android Kotlin `EngineConfig` accepts a filesystem model path. The model is then loaded automatically on-device. No network permission is requested and chat inference works offline.
+
+The direct-install APK will be substantially larger than a normal app (roughly 350 MiB or more). After installation, keep around 700 MiB free for first-run model preparation and about 2 GiB of available memory for model loading/generation; actual device requirements vary. The APK is intended for direct installation/testing, not a Google Play signed-APK upload. Google Play distribution needs an Android App Bundle with a Play Asset Delivery pack for the model.
 
 ## Model and runtime
 
@@ -41,4 +45,5 @@ Analytics are off by default and are not transmitted in this build. A future ana
 - This is an early MVP foundation, not a finished commercial adult platform.
 - The local model is a general small language model. Character prompts shape tone, but they do not guarantee unrestricted output or high-quality roleplay.
 - No account system, cloud sync, voice, payments, creator marketplace, or analytics backend is connected yet.
+- The standalone bundled-model APK is large. A separate Android App Bundle + Play Asset Delivery configuration is required for Google Play distribution.
 - Do not treat the self-declared 18+ gate as a substitute for stronger age assurance where required by law or distribution policy.
