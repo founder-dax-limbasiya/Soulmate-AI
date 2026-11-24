@@ -242,9 +242,9 @@ function renderOnboarding(){
 app.innerHTML='<div class="gate"><div class="gate-logo">s</div><div class="small-kicker">Your space, your rules</div><h1>Private from the start.</h1><p>Your profile and chat history stay encrypted on this phone. Cloud AI is used only when you send a message.</p><div class="gate-card"><div class="row"><strong>Chats saved on this phone</strong><span class="pill"><span class="dot"></span>Encrypted</span></div><p>Chat history and character profiles are protected with Android Keystore-backed encryption.</p></div><div class="gate-card"><div class="row"><strong>Cloud AI replies</strong><span class="pill">Internet required</span></div><p>Your message, character instructions and recent conversation context are sent to the AI server you configure. The gateway does not save chat history in a database. Use only a server you trust.</p></div><div class="gate-card"><div class="row"><strong>Anonymous analytics</strong><button class="switch" id="analyticsSwitch" aria-label="Enable analytics"></button></div><p>Off by default. No analytics service is connected in this build.</p></div><button class="primary" id="finishOnboarding">Enter Soulmate AI</button><p class="note" style="margin-top:14px">You can change the AI server in Settings. The age check is self-declared and may not meet local age-assurance requirements.</p></div>';
 document.getElementById("analyticsSwitch").classList.toggle("on",!!state.analyticsConsent);
 document.getElementById("analyticsSwitch").onclick=function(){state.analyticsConsent=!state.analyticsConsent;this.classList.toggle("on",state.analyticsConsent);};
-document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");};
+document.getElementById("finishOnboarding").onclick=function(){state.onboardingDone=true;save();renderMain("discover");if(native){native.setServerUrl(state.serverUrl||"");native.checkServer();}};
 }
-function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>ON THIS DEVICE</div></div>';}
+function header(){return '<div class="topbar"><div class="brand"><div class="brandmark">s</div>SOULMATE</div><div class="pill"><span class="dot"></span>LOCAL CHATS · CLOUD AI</div></div>';}
 function nav(active){return '<div class="bottomnav">'+[['discover','⌂','Discover'],['chats','◷','Chats'],['create','＋','Create'],['settings','≡','Settings']].map(([id,icon,label])=>'<button class="nav-item '+(active===id?'active':'')+'" data-tab="'+id+'"><span class="nav-icon">'+icon+'</span>'+label+'</button>').join("")+'</div>';}
 function tone(c){return c.id==="mia"?"tone-mia":c.id==="aria"?"tone-aria":c.id==="zara"?"tone-zara":c.id==="noah"?"tone-noah":"tone-custom";}
 function monogram(c){return esc(String(c.name||"S").trim().charAt(0).toUpperCase()||"S");}
@@ -340,9 +340,9 @@ native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(id).slice(-
 toast(detail||"Cloud AI ready.");
 if(state.selectedTab==="settings")renderMain("settings");
 }
-if(status==="offline"){aiReady=false;}
+if(status==="offline"){aiReady=false;if(state.selectedTab==="settings")renderMain("settings");}
 if(status==="generating")aiReady=true;
-const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;
+const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;\nconst chatStatus=document.querySelector(".chat-sub");if(chatStatus)chatStatus.textContent=aiReady?"● Cloud AI ready":"● Connect cloud AI in Settings";
 };
 window.onAiError=function(message){
 const id=activeAssistantCharacterId,replyId=activeAssistantId;
@@ -352,7 +352,7 @@ if(target){target.content="I couldn't generate a reply: "+String(message||"Unkno
 if(state.selectedCharacterId===id){const bubble=document.getElementById("last-ai-bubble");if(bubble){bubble.textContent=target?target.content:"";bubble.id="";}}
 activeAssistantId=null;activeAssistantCharacterId=null;
 }
-toast(message||"Local AI error.");
+toast(message||"Cloud AI error.");
 };
 function wireSettings(){
 const analytics=document.getElementById("analyticsSetting");
