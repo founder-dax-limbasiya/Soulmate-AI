@@ -11,8 +11,13 @@ android {
         applicationId 'com.soulmateai.companion'
         minSdk 24
         targetSdk 35
-        versionCode 6
-        versionName '0.3.3'
+        versionCode 7
+        versionName '0.4.0'
+    }
+
+    // The model is a prebuilt binary asset. Avoid wasting build time on recompression.
+    androidResources {
+        noCompress += ['litertlm']
     }
 
     buildTypes {
@@ -31,6 +36,6 @@ android {
 }
 
 dependencies {
-    // On-device text generation. Model weights are downloaded separately by the user.
+    // On-device text generation. The matching LiteRT-LM model is bundled in the APK assets.
     implementation 'com.google.ai.edge.litertlm:litertlm-android:0.19.1'
 }
