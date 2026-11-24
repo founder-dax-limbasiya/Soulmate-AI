@@ -36,7 +36,7 @@ The model download is several gigabytes and happens once on the server. Keep the
 
 - `GET /health` reports ready only when llama.cpp has loaded the model.
 - `POST /v1/chat/completions` streams OpenAI-compatible SSE chunks.
-- Up to 14 messages and 18,000 total characters per request.
+- Up to 14 messages and 12,000 total characters per request.
 - 420 generated tokens maximum.
 - 20 requests per IP per 10 minutes; one active generation at a time.
 - Rate-limit counters are in memory and reset when the gateway restarts. This is abuse friction for a private beta, not strong user authentication.
