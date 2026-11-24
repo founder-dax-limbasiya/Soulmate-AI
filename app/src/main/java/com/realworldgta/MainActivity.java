@@ -1,7 +1,6 @@
 package com.realworldgta;
 
 import android.app.Activity;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -284,66 +283,6 @@ public class MainActivity extends Activity {
             localAiEngine.sendMessage(prompt);
         }
 
-        private JSONObject queryDownload(long requestId) {
-            JSONObject result = new JSONObject();
-            Cursor cursor = null;
-            try {
-                DownloadManager.Query query = new DownloadManager.Query().setFilterById(requestId);
-                cursor = downloadManager.query(query);
-                if (cursor == null || !cursor.moveToFirst()) {
-                    File file = getModelFile();
-                    return result.put("status",
-                            file != null && file.isFile() && file.length() >= MIN_MODEL_BYTES
-                                    ? "complete" : "not_found");
-                }
-                int status = cursor.getInt(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_STATUS));
-                long downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                long total = cursor.getLong(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-                int progress = total > 0 ? (int) Math.min(100, (downloaded * 100L) / total) : 0;
-                String label;
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    File file = getModelFile();
-                    label = file != null && file.isFile() && file.length() >= MIN_MODEL_BYTES
-                            ? "complete" : "invalid_file";
-                } else if (status == DownloadManager.STATUS_RUNNING) label = "downloading";
-                else if (status == DownloadManager.STATUS_PENDING) label = "queued";
-                else if (status == DownloadManager.STATUS_PAUSED) label = "paused";
-                else label = "failed";
-
-                result.put("status", label);
-                result.put("progress", progress);
-                result.put("downloadedBytes", downloaded);
-                result.put("totalBytes", total);
-                if (status == DownloadManager.STATUS_FAILED) {
-                    result.put("reason", cursor.getInt(cursor.getColumnIndexOrThrow(
-                            DownloadManager.COLUMN_REASON)));
-                }
-                return result;
-            } catch (Exception error) {
-                return safeJsonObject("error", error.getMessage());
-            } finally {
-                if (cursor != null) cursor.close();
-            }
-        }
-
-        private JSONObject safeJsonObject(String key, String value) {
-            try {
-                return new JSONObject().put(key, value == null ? "" : value);
-            } catch (Exception ignored) {
-                return new JSONObject();
-            }
-        }
-
-        private String safeJson(String key, String value) {
-            try {
-                return new JSONObject().put(key, value == null ? "" : value).toString();
-            } catch (Exception ignored) {
-                return "{}";
-            }
-        }
     }
 
     @Override
