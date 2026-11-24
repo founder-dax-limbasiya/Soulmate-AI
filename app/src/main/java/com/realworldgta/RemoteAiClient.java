@@ -147,7 +147,6 @@ public final class RemoteAiClient {
         }
         synchronized (history) {
             for (JSONObject item : history) messages.put(item);
-            history.add(new JSONObject().put("role", "user").put("content", text));
         }
         messages.put(new JSONObject().put("role", "user").put("content", text));
 
@@ -208,6 +207,7 @@ public final class RemoteAiClient {
                         String answer = assistantText.toString().trim();
                         if (answer.isEmpty()) throw new IOException("The AI server returned an empty reply.");
                         synchronized (history) {
+                            history.add(new JSONObject().put("role", "user").put("content", text));
                             history.add(new JSONObject().put("role", "assistant").put("content", answer));
                             while (history.size() > MAX_HISTORY_MESSAGES) history.remove(0);
                         }
