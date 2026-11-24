@@ -1,14 +1,8 @@
 package com.realworldgta;
 
 import android.app.Activity;
-import android.app.DownloadManager;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -19,23 +13,26 @@ import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private static final String MODEL_FILE = "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm";
-    private static final String MODEL_URL =
-            "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/"
-                    + MODEL_FILE + "?download=true";
     // The selected model card lists the artifact at 328 MiB. Reject incomplete downloads.
     private static final long MIN_MODEL_BYTES = 328L * 1024L * 1024L;
 
     private WebView webView;
-    private DownloadManager downloadManager;
     private SecureStoreBridge secureStore;
     private LocalAiEngine localAiEngine;
-    private long activeDownloadId = -1L;
-    private SharedPreferences downloadPreferences;
-    private static final String DOWNLOAD_ID_KEY = "model_download_id";
+    private final ExecutorService modelInstaller = Executors.newSingleThreadExecutor();
+    private volatile boolean modelInstallRunning = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,9 +45,6 @@ public class MainActivity extends Activity {
         }
         getWindow().getDecorView().setSystemUiVisibility(systemUiFlags);
 
-        downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        downloadPreferences = getSharedPreferences("soulmate_download_state", MODE_PRIVATE);
-        activeDownloadId = downloadPreferences.getLong(DOWNLOAD_ID_KEY, -1L);
         secureStore = new SecureStoreBridge(this);
         localAiEngine = new LocalAiEngine(this, new LocalAiEngine.Listener() {
             @Override public void onStatus(String status, String detail) {
@@ -99,9 +93,142 @@ public class MainActivity extends Activity {
     }
 
     private File getModelFile() {
-        File directory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
-        if (directory == null) return null;
+        File directory = new File(getFilesDir(), "models");
+        if (!directory.exists() && !directory.mkdirs()) return null;
         return new File(directory, MODEL_FILE);
+    }
+
+    private String readBundledModelChecksum() throws Exception {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                getAssets().open("models/model.sha256"), StandardCharsets.US_ASCII))) {
+            String value = reader.readLine();
+            if (value == null || !value.matches("(?i)[0-9a-f]{64}")) {
+                throw new IllegalStateException("Bundled model checksum is missing or invalid.");
+            }
+            return value.toLowerCase(java.util.Locale.ROOT);
+        }
+    }
+
+    private boolean isBundledModelReady(String expectedChecksum) {
+        File model = getModelFile();
+        if (model == null || !model.isFile() || model.length() < MIN_MODEL_BYTES) return false;
+        File marker = new File(model.getParentFile(), MODEL_FILE + ".sha256");
+        if (!marker.isFile()) return false;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                new java.io.FileInputStream(marker), StandardCharsets.US_ASCII))) {
+            String installedChecksum = reader.readLine();
+            return expectedChecksum.equals(installedChecksum);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static String toHex(byte[] bytes) {
+        StringBuilder value = new StringBuilder(bytes.length * 2);
+        for (byte item : bytes) value.append(String.format(java.util.Locale.ROOT, "%02x", item & 0xff));
+        return value.toString();
+    }
+
+    private void prepareBundledModel() {
+        final String expectedChecksum;
+        try {
+            expectedChecksum = readBundledModelChecksum();
+        } catch (Exception error) {
+            callJs("onBundledModelError",
+                    "This APK does not contain the complete AI model. Install the full bundled-model APK.");
+            return;
+        }
+
+        if (isBundledModelReady(expectedChecksum)) {
+            callJs("onBundledModelReady");
+            return;
+        }
+
+        synchronized (this) {
+            if (modelInstallRunning) return;
+            modelInstallRunning = true;
+        }
+
+        modelInstaller.execute(() -> {
+            File destination = getModelFile();
+            File partial = destination == null ? null
+                    : new File(destination.getParentFile(), MODEL_FILE + "."
+                            + Integer.toHexString(System.identityHashCode(MainActivity.this)) + ".partial");
+            try {
+                if (destination == null || partial == null) {
+                    throw new IllegalStateException("App storage is unavailable.");
+                }
+                if (partial.exists()) partial.delete();
+                long minimumFreeBytes = MIN_MODEL_BYTES + 64L * 1024L * 1024L;
+                if (destination.getParentFile().getUsableSpace() < minimumFreeBytes) {
+                    throw new IllegalStateException("Free at least 400 MiB of phone storage, then tap Retry model setup.");
+                }
+
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                long copied = 0L;
+                int lastProgressBucket = -1;
+                byte[] buffer = new byte[1024 * 1024];
+                callJs("onBundledModelProgress", "0");
+
+                try (InputStream input = getAssets().open(
+                            "models/" + MODEL_FILE, android.content.res.AssetManager.ACCESS_STREAMING);
+                     FileOutputStream output = new FileOutputStream(partial)) {
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        if (Thread.currentThread().isInterrupted()) {
+                            throw new InterruptedException("Model setup was paused. Open the app to retry.");
+                        }
+                        output.write(buffer, 0, count);
+                        digest.update(buffer, 0, count);
+                        copied += count;
+                        int percent = (int) Math.min(100L, copied * 100L / MIN_MODEL_BYTES);
+                        int progressBucket = percent / 5;
+                        if (progressBucket > lastProgressBucket) {
+                            lastProgressBucket = progressBucket;
+                            callJs("onBundledModelProgress", String.valueOf(percent));
+                        }
+                    }
+                    output.getFD().sync();
+                }
+
+                if (copied < MIN_MODEL_BYTES) {
+                    throw new IllegalStateException("The bundled AI model is incomplete.");
+                }
+                if (Thread.currentThread().isInterrupted()) {
+                    throw new InterruptedException("Model setup was paused. Open the app to retry.");
+                }
+                String actualChecksum = toHex(digest.digest());
+                if (!expectedChecksum.equals(actualChecksum)) {
+                    throw new IllegalStateException("The bundled AI model failed its integrity check.");
+                }
+
+                if (destination.exists() && !destination.delete()) {
+                    throw new IllegalStateException("Could not replace the previous model file.");
+                }
+                if (!partial.renameTo(destination)) {
+                    throw new IllegalStateException("Could not finish preparing the bundled AI model.");
+                }
+
+                File marker = new File(destination.getParentFile(), MODEL_FILE + ".sha256");
+                try (FileOutputStream output = new FileOutputStream(marker, false)) {
+                    output.write(expectedChecksum.getBytes(StandardCharsets.US_ASCII));
+                    output.write('\n');
+                    output.getFD().sync();
+                }
+
+                runOnUiThread(() -> {
+                    modelInstallRunning = false;
+                    callJs("onBundledModelReady");
+                });
+            } catch (Exception error) {
+                if (partial != null && partial.exists()) partial.delete();
+                runOnUiThread(() -> {
+                    modelInstallRunning = false;
+                    callJs("onBundledModelError",
+                            error.getMessage() == null ? "Could not prepare the bundled AI model." : error.getMessage());
+                });
+            }
+        });
     }
 
     private void callJs(String function, String... args) {
@@ -137,105 +264,23 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface
         public boolean hasModel() {
-            File file = getModelFile();
-            return file != null && file.isFile() && file.length() >= MIN_MODEL_BYTES;
-        }
-
-        @JavascriptInterface
-        public String getCurrentDownloadStatus() {
             try {
-                if (hasModel()) return new JSONObject().put("status", "complete").toString();
-                if (activeDownloadId == -1L) {
-                    return new JSONObject().put("status", "not_started").toString();
-                }
-                JSONObject current = queryDownload(activeDownloadId);
-                String status = current.optString("status");
-                if ("not_found".equals(status)) {
-                    activeDownloadId = -1L;
-                    downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
-                    return new JSONObject().put("status", "not_started").toString();
-                }
-                current.put("id", String.valueOf(activeDownloadId));
-                return current.toString();
-            } catch (Exception error) {
-                return safeJson("error", error.getMessage());
-            }
-        }
-
-        @JavascriptInterface
-        public String downloadModel(boolean allowMetered) {
-            try {
-                File file = getModelFile();
-                if (file == null) return new JSONObject().put("status", "storage_unavailable").toString();
-                if (file.isFile() && file.length() >= MIN_MODEL_BYTES) {
-                    return new JSONObject().put("status", "already_downloaded").toString();
-                }
-
-                if (activeDownloadId != -1L) {
-                    JSONObject current = queryDownload(activeDownloadId);
-                    String status = current.optString("status");
-                    if ("downloading".equals(status) || "queued".equals(status)
-                            || "paused".equals(status)) {
-                        current.put("id", String.valueOf(activeDownloadId));
-                        return current.toString();
-                    }
-                    downloadManager.remove(activeDownloadId);
-                    activeDownloadId = -1L;
-                    downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
-                }
-
-                if (file.exists()) file.delete();
-                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(MODEL_URL));
-                request.setTitle("Soulmate AI model");
-                request.setDescription("Downloading the on-device Qwen3 model (about 328 MiB)");
-                request.setAllowedOverMetered(allowMetered);
-                request.setAllowedOverRoaming(false);
-                request.setNotificationVisibility(
-                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                request.setDestinationInExternalFilesDir(
-                        MainActivity.this, Environment.DIRECTORY_DOWNLOADS, MODEL_FILE);
-                activeDownloadId = downloadManager.enqueue(request);
-                downloadPreferences.edit().putLong(DOWNLOAD_ID_KEY, activeDownloadId).apply();
-                return new JSONObject()
-                        .put("status", "queued")
-                        .put("id", String.valueOf(activeDownloadId))
-                        .toString();
-            } catch (Exception error) {
-                return safeJson("error", error.getMessage());
-            }
-        }
-
-        @JavascriptInterface
-        public boolean cancelModelDownload() {
-            try {
-                if (activeDownloadId != -1L) downloadManager.remove(activeDownloadId);
-                activeDownloadId = -1L;
-                downloadPreferences.edit().remove(DOWNLOAD_ID_KEY).apply();
-                File file = getModelFile();
-                if (file != null && file.exists() && file.length() < MIN_MODEL_BYTES) {
-                    file.delete();
-                }
-                return true;
-            } catch (Exception error) {
+                return isBundledModelReady(readBundledModelChecksum());
+            } catch (Exception ignored) {
                 return false;
             }
         }
 
         @JavascriptInterface
-        public String getDownloadStatus(String id) {
-            try {
-                long requestId = Long.parseLong(id);
-                return queryDownload(requestId).toString();
-            } catch (Exception error) {
-                return safeJson("error", error.getMessage());
-            }
+        public void prepareBundledModel() {
+            MainActivity.this.prepareBundledModel();
         }
 
         @JavascriptInterface
         public void loadModel(String systemInstruction, String historyJson) {
             File file = getModelFile();
             if (file == null || !file.isFile() || file.length() < MIN_MODEL_BYTES) {
-                callJs("onAiError", "Download the complete local model first.");
+                callJs("onAiError", "The built-in AI model is not ready yet. Open Settings and retry model setup.");
                 return;
             }
             localAiEngine.loadModel(file.getAbsolutePath(), systemInstruction, historyJson);
@@ -251,70 +296,11 @@ public class MainActivity extends Activity {
             localAiEngine.sendMessage(prompt);
         }
 
-        private JSONObject queryDownload(long requestId) {
-            JSONObject result = new JSONObject();
-            Cursor cursor = null;
-            try {
-                DownloadManager.Query query = new DownloadManager.Query().setFilterById(requestId);
-                cursor = downloadManager.query(query);
-                if (cursor == null || !cursor.moveToFirst()) {
-                    File file = getModelFile();
-                    return result.put("status",
-                            file != null && file.isFile() && file.length() >= MIN_MODEL_BYTES
-                                    ? "complete" : "not_found");
-                }
-                int status = cursor.getInt(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_STATUS));
-                long downloaded = cursor.getLong(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                long total = cursor.getLong(cursor.getColumnIndexOrThrow(
-                        DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
-                int progress = total > 0 ? (int) Math.min(100, (downloaded * 100L) / total) : 0;
-                String label;
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    File file = getModelFile();
-                    label = file != null && file.isFile() && file.length() >= MIN_MODEL_BYTES
-                            ? "complete" : "invalid_file";
-                } else if (status == DownloadManager.STATUS_RUNNING) label = "downloading";
-                else if (status == DownloadManager.STATUS_PENDING) label = "queued";
-                else if (status == DownloadManager.STATUS_PAUSED) label = "paused";
-                else label = "failed";
-
-                result.put("status", label);
-                result.put("progress", progress);
-                result.put("downloadedBytes", downloaded);
-                result.put("totalBytes", total);
-                if (status == DownloadManager.STATUS_FAILED) {
-                    result.put("reason", cursor.getInt(cursor.getColumnIndexOrThrow(
-                            DownloadManager.COLUMN_REASON)));
-                }
-                return result;
-            } catch (Exception error) {
-                return safeJsonObject("error", error.getMessage());
-            } finally {
-                if (cursor != null) cursor.close();
-            }
-        }
-
-        private JSONObject safeJsonObject(String key, String value) {
-            try {
-                return new JSONObject().put(key, value == null ? "" : value);
-            } catch (Exception ignored) {
-                return new JSONObject();
-            }
-        }
-
-        private String safeJson(String key, String value) {
-            try {
-                return new JSONObject().put(key, value == null ? "" : value).toString();
-            } catch (Exception ignored) {
-                return "{}";
-            }
-        }
     }
 
     @Override
     protected void onDestroy() {
+        modelInstaller.shutdownNow();
         if (localAiEngine != null) {
             localAiEngine.close();
             localAiEngine = null;
