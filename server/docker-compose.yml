@@ -21,6 +21,7 @@ services:
       - --n-gpu-layers
       - "0"
       - --log-disable
+      - --no-webui
     environment:
       LLAMA_CACHE: /models
     volumes:
