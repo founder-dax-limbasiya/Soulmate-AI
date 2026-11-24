@@ -290,7 +290,7 @@ document.getElementById("sendChat").onclick=sendMessage;
 document.getElementById("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}});
 document.getElementById("chatInput").addEventListener("input",function(){this.style.height="43px";this.style.height=Math.min(this.scrollHeight,110)+"px";});
 const log=document.getElementById("chatLog");log.scrollTop=log.scrollHeight;
-if(aiReady&&native)native.startCharacter(characterPrompt(c),JSON.stringify(history.slice(-12)));
+if(aiReady&&native)native.startCharacter(id,characterPrompt(c),JSON.stringify(history.slice(-12)));
 }
 function renderMessages(messages){
 if(!messages.length)return '<div class="empty"><div class="big">A first hello.</div><div style="color:#5d594f;font-weight:700;margin-bottom:6px">A new conversation with '+esc(characterById(state.selectedCharacterId).name)+'</div>Start wherever feels natural.</div>';
@@ -335,7 +335,7 @@ if(status==="ready"){
 aiReady=true;
 if(String(detail||"")==="Cloud AI connected."&&state.selectedCharacterId&&native){
 const id=state.selectedCharacterId,c=characterById(id);
-native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
+native.startCharacter(id,characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
 }
 toast(detail||"Cloud AI ready.");
 if(state.selectedTab==="settings")renderMain("settings");
@@ -370,7 +370,7 @@ const label=document.getElementById("modelStatus");if(label)label.textContent="C
 native.checkServer();
 };
 const notesSave=document.getElementById("savePersonalNotes");
-if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
+if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(state.selectedCharacterId,characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
 const clear=document.getElementById("clearData");
 if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters, server address and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,serverUrl:"",selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;renderAgeGate();toast("Local data deleted.");};
 }
