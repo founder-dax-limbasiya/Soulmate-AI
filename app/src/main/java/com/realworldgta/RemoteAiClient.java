@@ -116,6 +116,7 @@ public final class RemoteAiClient {
                 for (int i = items.length() - 1; i >= 0 && newestFirst.size() < MAX_HISTORY_MESSAGES; i--) {
                     JSONObject item = items.optJSONObject(i);
                     if (item == null) continue;
+                    if (item.optBoolean("streaming", false)) continue;
                     String role = item.optString("role", "");
                     String text = item.optString("content", "");
                     if (!("user".equals(role) || "assistant".equals(role)) || text.trim().isEmpty()) continue;
