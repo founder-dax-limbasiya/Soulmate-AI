@@ -301,7 +301,7 @@ function sendMessage(){
 const input=document.getElementById("chatInput");const text=input.value.trim();
 if(!text)return;
 if(activeAssistantId){toast("One reply is still being generated. Please wait a moment.");return;}
-if(!aiReady){toast("Open Settings → On-device AI and load the model first.");return;}
+if(!aiReady){toast("The built-in AI is still getting ready. Try again in a moment.");return;}
 if(!native){toast("Native local AI bridge is unavailable.");return;}
 const id=state.selectedCharacterId;
 const msgs=localHistory(id);msgs.push({role:"user",content:text,at:Date.now()});
@@ -332,7 +332,14 @@ if(state.selectedCharacterId===id){const bubble=document.getElementById("last-ai
 activeAssistantId=null;activeAssistantCharacterId=null;
 };
 window.onAiStatus=function(status,detail){
-if(status==="ready"){aiReady=true;toast(detail||"Local AI ready.");}
+if(status==="ready"){
+aiReady=true;
+if(state.selectedCharacterId&&native&&!String(detail||"").startsWith("Character ready.")){
+const id=state.selectedCharacterId,c=characterById(id);
+native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(id).slice(-12)));
+}
+toast(detail||"Local AI ready.");
+}
 if(status==="generating")aiReady=true;
 const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;
 };
@@ -354,7 +361,7 @@ if(loadButton)loadButton.onclick=loadLocalModel;
 const notesSave=document.getElementById("savePersonalNotes");
 if(notesSave)notesSave.onclick=function(){const field=document.getElementById("personalNotes");state.personalNotes=String(field?field.value:"").trim().slice(0,1500);save();if(state.selectedCharacterId&&aiReady){const c=characterById(state.selectedCharacterId);native.startCharacter(characterPrompt(c),JSON.stringify(localHistory(state.selectedCharacterId).slice(-12)));}toast("Personal context saved on this phone.");};
 const clear=document.getElementById("clearData");
-if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;renderAgeGate();toast("Local data deleted.");};
+if(clear)clear.onclick=function(){if(!confirm("Delete all locally saved chats, characters and preferences? This cannot be undone."))return;if(native)native.clearEncryptedState();state={ageVerified:false,onboardingDone:false,analyticsConsent:false,selectedCharacterId:null,messages:{},customCharacters:[],createdAt:Date.now()};aiReady=false;modelBootstrapStarted=false;renderAgeGate();toast("Local data deleted.");};
 }
 function prepareBundledModel(){
 if(!native){toast("The Android model installer is unavailable.");return;}
