@@ -38,7 +38,7 @@ public final class RemoteAiClient {
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final int MAX_HISTORY_MESSAGES = 12;
-    private static final int MAX_MESSAGE_CHARS = 4000;
+    private static final int MAX_MESSAGE_CHARS = 4000;\n    private static final int MAX_HISTORY_CHARS = 6000;
 
     private final Listener listener;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -107,26 +107,41 @@ public final class RemoteAiClient {
         systemInstruction = instruction == null ? "" : instruction;
         synchronized (history) {
             history.clear();
+            ArrayList<JSONObject> newestFirst = new ArrayList<>();
+            int totalChars = 0;
             try {
                 JSONArray items = new JSONArray(historyJson == null ? "[]" : historyJson);
-                int start = Math.max(0, items.length() - MAX_HISTORY_MESSAGES);
-                for (int i = start; i < items.length(); i++) {
+                for (int i = items.length() - 1; i >= 0 && newestFirst.size() < MAX_HISTORY_MESSAGES; i--) {
                     JSONObject item = items.optJSONObject(i);
                     if (item == null) continue;
                     String role = item.optString("role", "");
                     String text = item.optString("content", "");
-                    if (("user".equals(role) || "assistant".equals(role))
-                            && !text.trim().isEmpty()) {
-                        history.add(new JSONObject().put("role", role)
-                                .put("content", text.substring(0, Math.min(text.length(), MAX_MESSAGE_CHARS))));
-                    }
+                    if (!("user".equals(role) || "assistant".equals(role)) || text.trim().isEmpty()) continue;
+                    if (text.length() > MAX_MESSAGE_CHARS) text = text.substring(text.length() - MAX_MESSAGE_CHARS);
+                    if (totalChars + text.length() > MAX_HISTORY_CHARS) break;
+                    newestFirst.add(new JSONObject().put("role", role).put("content", text));
+                    totalChars += text.length();
                 }
+                for (int i = newestFirst.size() - 1; i >= 0; i--) history.add(newestFirst.get(i));
             } catch (Exception ignored) {
                 history.clear();
             }
         }
         if (baseUrl.isEmpty()) postStatus("offline", "Add your HTTPS AI server address in Settings.");
         else postStatus("ready", "Character ready.");
+    }
+
+    private void trimHistoryLocked() {
+        while (history.size() > MAX_HISTORY_MESSAGES) history.remove(0);
+        int totalChars = 0;
+        for (int i = history.size() - 1; i >= 0; i--) {
+            int length = history.get(i).optString("content", "").length();
+            if (totalChars + length > MAX_HISTORY_CHARS) {
+                history.subList(0, i + 1).clear();
+                break;
+            }
+            totalChars += length;
+        }
     }
 
     public void sendMessage(String prompt) {
@@ -212,7 +227,7 @@ public final class RemoteAiClient {
                         synchronized (history) {
                             history.add(new JSONObject().put("role", "user").put("content", text));
                             history.add(new JSONObject().put("role", "assistant").put("content", answer));
-                            while (history.size() > MAX_HISTORY_MESSAGES) history.remove(0);
+                            trimHistoryLocked();
                         }
                         main.post(() -> {
                             listener.onComplete();
