@@ -117,8 +117,8 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public void startCharacter(String systemInstruction, String historyJson) {
-            remoteAiClient.startConversation(systemInstruction, historyJson);
+        public void startCharacter(String conversationId, String systemInstruction, String historyJson) {
+            remoteAiClient.startConversation(conversationId, systemInstruction, historyJson);
         }
 
         @JavascriptInterface
