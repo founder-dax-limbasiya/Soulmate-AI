@@ -84,8 +84,7 @@ public final class RemoteAiClient {
             postStatus("offline", "Add your HTTPS AI server address in Settings.");
             return;
         }
-        Request request = new Request.Builder().url(base + "/health").get().build();
-        http.newCall(request).enqueue(new Callback() {
+        Request request = new Request.Builder().url(base + "/health").get().build();\n        Call healthCall = http.newCall(request);\n        healthCall.timeout().timeout(12, TimeUnit.SECONDS);\n        healthCall.enqueue(new Callback() {
             @Override public void onFailure(Call call, IOException error) {
                 postStatus("offline", "AI server is unreachable. Check your internet or server address.");
             }
@@ -123,10 +122,7 @@ public final class RemoteAiClient {
                 history.clear();
             }
         }
-        checkConnection();
-    }
-
-    public void sendMessage(String prompt) {
+        if (baseUrl.isEmpty()) postStatus("offline", "Add your HTTPS AI server address in Settings.");\n        else postStatus("ready", "Character ready.");\n    }\n\n    public void sendMessage(String prompt) {
         String text = prompt == null ? "" : prompt.trim();
         if (text.isEmpty() || text.length() > MAX_MESSAGE_CHARS) {
             postError("Message must contain 1–4,000 characters.");
@@ -207,8 +203,7 @@ public final class RemoteAiClient {
                         String answer = assistantText.toString().trim();
                         if (answer.isEmpty()) throw new IOException("The AI server returned an empty reply.");
                         synchronized (history) {
-                            history.add(new JSONObject().put("role", "user").put("content", text));
-                            history.add(new JSONObject().put("role", "assistant").put("content", answer));
+                            history.add(new JSONObject().put("role", "user").put("content", text));\n                            history.add(new JSONObject().put("role", "assistant").put("content", answer));
                             while (history.size() > MAX_HISTORY_MESSAGES) history.remove(0);
                         }
                         main.post(() -> {
