@@ -161,6 +161,10 @@ public class MainActivity extends Activity {
                     throw new IllegalStateException("App storage is unavailable.");
                 }
                 if (partial.exists()) partial.delete();
+                long minimumFreeBytes = MIN_MODEL_BYTES + 64L * 1024L * 1024L;
+                if (destination.getParentFile().getUsableSpace() < minimumFreeBytes) {
+                    throw new IllegalStateException("Free at least 400 MiB of phone storage, then tap Retry model setup.");
+                }
 
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 long copied = 0L;
@@ -267,7 +271,7 @@ public class MainActivity extends Activity {
         public void loadModel(String systemInstruction, String historyJson) {
             File file = getModelFile();
             if (file == null || !file.isFile() || file.length() < MIN_MODEL_BYTES) {
-                callJs("onAiError", "Download the complete local model first.");
+                callJs("onAiError", "The built-in AI model is not ready yet. Open Settings and retry model setup.");
                 return;
             }
             localAiEngine.loadModel(file.getAbsolutePath(), systemInstruction, historyJson);
