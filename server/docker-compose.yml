@@ -1,0 +1,66 @@
+services:
+  llama:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    restart: unless-stopped
+    command:
+      - -hf
+      - Qwen/Qwen3-4B-GGUF:Q4_K_M
+      - --jinja
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - "4096"
+      - --threads
+      - "2"
+      - --threads-batch
+      - "2"
+      - --parallel
+      - "1"
+      - --n-gpu-layers
+      - "0"
+      - --log-disable
+      - --no-webui
+    environment:
+      LLAMA_CACHE: /models
+    volumes:
+      - model-cache:/models
+    expose:
+      - "8080"
+    # No public port: only the private Docker network can reach llama-server.
+
+  gateway:
+    build:
+      context: ./gateway
+    restart: unless-stopped
+    environment:
+      LLAMA_CHAT_URL: http://llama:8080/v1/chat/completions
+      LLAMA_HEALTH_URL: http://llama:8080/health
+      RATE_WINDOW_SECONDS: "600"
+      RATE_MAX_REQUESTS: "20"
+    depends_on:
+      - llama
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in server/.env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - gateway
+
+volumes:
+  model-cache:
+  caddy-data:
+  caddy-config:

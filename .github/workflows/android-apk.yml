@@ -2,6 +2,8 @@ name: Build Soulmate AI APK
 
 on:
   push:
+    branches: [main, feature/cloud-ai-small-apk]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -33,61 +35,10 @@ jobs:
           accept-android-sdk-licenses: true
 
       - name: Install Android platform and build tools
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Download and verify bundled AI model
-        run: |
-          set -euo pipefail
-          MODEL_FILE="Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm"
-          MODEL_PATH="app/src/main/assets/models/$MODEL_FILE"
-          LICENSE_DIR="app/src/main/assets/licenses"
-          mkdir -p "$(dirname "$MODEL_PATH")" "$LICENSE_DIR"
-
-          curl -fL --retry 5 --retry-all-errors --connect-timeout 30 \
-            --output "$MODEL_PATH" \
-            "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/$MODEL_FILE?download=true"
-
-          MODEL_BYTES="$(stat -c%s "$MODEL_PATH")"
-          MIN_MODEL_BYTES=335544320
-          if [ "$MODEL_BYTES" -lt "$MIN_MODEL_BYTES" ]; then
-            echo "Bundled model download is incomplete: $MODEL_BYTES bytes (minimum $MIN_MODEL_BYTES)."
-            exit 1
-          fi
-
-          sha256sum "$MODEL_PATH" | awk '{print $1}' > app/src/main/assets/models/model.sha256
-          printf '%s\n' "$MODEL_BYTES" > app/src/main/assets/models/model.size
-
-          curl -fL --retry 3 --retry-all-errors \
-            --output "$LICENSE_DIR/Qwen3-0.6B-LICENSE.txt" \
-            "https://huggingface.co/Qwen/Qwen3-0.6B/resolve/main/LICENSE"
-          curl -fL --retry 3 --retry-all-errors \
-            --output "$LICENSE_DIR/LiteRT-LM-LICENSE.txt" \
-            "https://raw.githubusercontent.com/google-ai-edge/LiteRT-LM/main/LICENSE"
-
-          test -s "$LICENSE_DIR/Qwen3-0.6B-LICENSE.txt"
-          test -s "$LICENSE_DIR/LiteRT-LM-LICENSE.txt"
-          echo "Bundled model: $MODEL_BYTES bytes"
-          echo "SHA-256: $(cat app/src/main/assets/models/model.sha256)"
-          {
-            echo "### Bundled model"
-            echo "- File: $MODEL_FILE"
-            echo "- Size: $MODEL_BYTES bytes"
-            echo "- SHA-256: $(cat app/src/main/assets/models/model.sha256)"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Verify bundled model and license assets
-        run: |
-          cd app/src/main/assets/models
-          EXPECTED="$(cat model.sha256)"
-          ACTUAL="$(sha256sum Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | awk '{print $1}')"
-          EXPECTED_BYTES="$(cat model.size)"
-          ACTUAL_BYTES="$(stat -c%s Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm)"
-          test "$EXPECTED" = "$ACTUAL"
-          test "$EXPECTED_BYTES" = "$ACTUAL_BYTES"
-          cd -
-          test -s app/src/main/assets/licenses/Qwen3-0.6B-LICENSE.txt
-          test -s app/src/main/assets/licenses/LiteRT-LM-LICENSE.txt
+      - name: Check cloud gateway Python syntax
+        run: python3 -m py_compile server/gateway/app.py
 
       - name: Check embedded UI JavaScript
         run: |
@@ -101,31 +52,29 @@ jobs:
           PY
           node --check /tmp/soulmate-ui.js
 
-      - name: Build debug APK
+      - name: Build lightweight cloud-connected APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Verify the APK contains the complete model
+      - name: Verify the APK does not contain model weights
         run: |
           set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
-          unzip -Z1 "$APK" | grep -Fx "assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm"
-          unzip -Z1 "$APK" | grep -Fx "assets/models/model.sha256"
-          unzip -Z1 "$APK" | grep -Fx "assets/models/model.size"
-          unzip -Z1 "$APK" | grep -Fx "assets/licenses/Qwen3-0.6B-LICENSE.txt"
-          EXPECTED_MODEL_SHA="$(cat app/src/main/assets/models/model.sha256)"
-          APK_MODEL_SHA="$(unzip -p "$APK" assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | sha256sum | awk '{print $1}')"
-          EXPECTED_MODEL_BYTES="$(cat app/src/main/assets/models/model.size)"
-          APK_MODEL_BYTES="$(unzip -p "$APK" assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | wc -c)"
-          test "$EXPECTED_MODEL_SHA" = "$APK_MODEL_SHA"
-          test "$EXPECTED_MODEL_BYTES" = "$APK_MODEL_BYTES"
+          if unzip -Z1 "$APK" | grep -Eiq '\.(litertlm|gguf|safetensors)$'; then
+            echo "A model weight file was unexpectedly packaged in the APK."
+            exit 1
+          fi
           APK_BYTES="$(stat -c%s "$APK")"
-          echo "Bundled APK size: $APK_BYTES bytes"
-          echo "- APK size: $APK_BYTES bytes (model included)" >> "$GITHUB_STEP_SUMMARY"
+          echo "Lightweight APK size: $APK_BYTES bytes"
+          if [ "$APK_BYTES" -gt 60000000 ]; then
+            echo "APK is unexpectedly larger than 60 MB."
+            exit 1
+          fi
+          echo "- APK size: $APK_BYTES bytes; no model weights bundled." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: soulmate-ai-debug-apk
+          name: soulmate-ai-cloud-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14

@@ -13,26 +13,10 @@ import android.webkit.WebViewClient;
 
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 public class MainActivity extends Activity {
-    private static final String MODEL_FILE = "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm";
-    // The selected model card lists the artifact at 328 MiB. Reject incomplete downloads.
-    private static final long MIN_MODEL_BYTES = 320L * 1024L * 1024L;
-
     private WebView webView;
     private SecureStoreBridge secureStore;
-    private LocalAiEngine localAiEngine;
-    private final ExecutorService modelInstaller = Executors.newSingleThreadExecutor();
-    private volatile boolean modelInstallRunning = false;
+    private RemoteAiClient remoteAiClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,7 +30,7 @@ public class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(systemUiFlags);
 
         secureStore = new SecureStoreBridge(this);
-        localAiEngine = new LocalAiEngine(this, new LocalAiEngine.Listener() {
+        remoteAiClient = new RemoteAiClient(new RemoteAiClient.Listener() {
             @Override public void onStatus(String status, String detail) {
                 callJs("onAiStatus", status, detail);
             }
@@ -67,7 +51,6 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // The app is a self-contained local UI. Remote pages are never opened in this WebView.
                 return !request.getUrl().toString().startsWith("file:///android_asset/");
             }
         });
@@ -90,162 +73,6 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new NativeBridge(), "SoulmateNative");
         setContentView(webView);
         webView.loadUrl("file:///android_asset/index.html");
-    }
-
-    private File getModelFile() {
-        File directory = new File(getFilesDir(), "models");
-        if (!directory.exists() && !directory.mkdirs()) return null;
-        return new File(directory, MODEL_FILE);
-    }
-
-    private String readBundledModelChecksum() throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                getAssets().open("models/model.sha256"), StandardCharsets.US_ASCII))) {
-            String value = reader.readLine();
-            if (value == null || !value.matches("(?i)[0-9a-f]{64}")) {
-                throw new IllegalStateException("Bundled model checksum is missing or invalid.");
-            }
-            return value.toLowerCase(java.util.Locale.ROOT);
-        }
-    }
-
-    private long readBundledModelSize() throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                getAssets().open("models/model.size"), StandardCharsets.US_ASCII))) {
-            String value = reader.readLine();
-            if (value == null || !value.matches("[0-9]{1,12}")) {
-                throw new IllegalStateException("Bundled model size metadata is missing or invalid.");
-            }
-            long size = Long.parseLong(value);
-            if (size < MIN_MODEL_BYTES || size > 2_000_000_000L) {
-                throw new IllegalStateException("Bundled model size is outside the supported range.");
-            }
-            return size;
-        }
-    }
-
-    private boolean isBundledModelReady(String expectedChecksum, long expectedModelBytes) {
-        File model = getModelFile();
-        if (model == null || !model.isFile() || model.length() != expectedModelBytes) return false;
-        File marker = new File(model.getParentFile(), MODEL_FILE + ".sha256");
-        if (!marker.isFile()) return false;
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                new java.io.FileInputStream(marker), StandardCharsets.US_ASCII))) {
-            String installedChecksum = reader.readLine();
-            return expectedChecksum.equals(installedChecksum);
-        } catch (Exception ignored) {
-            return false;
-        }
-    }
-
-    private static String toHex(byte[] bytes) {
-        StringBuilder value = new StringBuilder(bytes.length * 2);
-        for (byte item : bytes) value.append(String.format(java.util.Locale.ROOT, "%02x", item & 0xff));
-        return value.toString();
-    }
-
-    private void prepareBundledModel() {
-        final String expectedChecksum;
-        final long expectedModelBytes;
-        try {
-            expectedChecksum = readBundledModelChecksum();
-            expectedModelBytes = readBundledModelSize();
-        } catch (Exception error) {
-            callJs("onBundledModelError",
-                    "This APK does not contain the complete AI model. Install the full bundled-model APK.");
-            return;
-        }
-
-        if (isBundledModelReady(expectedChecksum, expectedModelBytes)) {
-            callJs("onBundledModelReady");
-            return;
-        }
-
-        synchronized (this) {
-            if (modelInstallRunning) return;
-            modelInstallRunning = true;
-        }
-
-        modelInstaller.execute(() -> {
-            File destination = getModelFile();
-            File partial = destination == null ? null
-                    : new File(destination.getParentFile(), MODEL_FILE + "."
-                            + Integer.toHexString(System.identityHashCode(MainActivity.this)) + ".partial");
-            try {
-                if (destination == null || partial == null) {
-                    throw new IllegalStateException("App storage is unavailable.");
-                }
-                if (partial.exists()) partial.delete();
-                long minimumFreeBytes = expectedModelBytes + 64L * 1024L * 1024L;
-                if (destination.getParentFile().getUsableSpace() < minimumFreeBytes) {
-                    throw new IllegalStateException("Free at least 400 MiB of phone storage, then tap Retry model setup.");
-                }
-
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                long copied = 0L;
-                int lastProgressBucket = -1;
-                byte[] buffer = new byte[1024 * 1024];
-                callJs("onBundledModelProgress", "0");
-
-                try (InputStream input = getAssets().open(
-                            "models/" + MODEL_FILE, android.content.res.AssetManager.ACCESS_STREAMING);
-                     FileOutputStream output = new FileOutputStream(partial)) {
-                    int count;
-                    while ((count = input.read(buffer)) != -1) {
-                        if (Thread.currentThread().isInterrupted()) {
-                            throw new InterruptedException("Model setup was paused. Open the app to retry.");
-                        }
-                        output.write(buffer, 0, count);
-                        digest.update(buffer, 0, count);
-                        copied += count;
-                        int percent = (int) Math.min(100L, copied * 100L / expectedModelBytes);
-                        int progressBucket = percent / 5;
-                        if (progressBucket > lastProgressBucket) {
-                            lastProgressBucket = progressBucket;
-                            callJs("onBundledModelProgress", String.valueOf(percent));
-                        }
-                    }
-                    output.getFD().sync();
-                }
-
-                if (copied != expectedModelBytes) {
-                    throw new IllegalStateException("The bundled AI model size does not match its build metadata.");
-                }
-                if (Thread.currentThread().isInterrupted()) {
-                    throw new InterruptedException("Model setup was paused. Open the app to retry.");
-                }
-                String actualChecksum = toHex(digest.digest());
-                if (!expectedChecksum.equals(actualChecksum)) {
-                    throw new IllegalStateException("The bundled AI model failed its integrity check.");
-                }
-
-                if (destination.exists() && !destination.delete()) {
-                    throw new IllegalStateException("Could not replace the previous model file.");
-                }
-                if (!partial.renameTo(destination)) {
-                    throw new IllegalStateException("Could not finish preparing the bundled AI model.");
-                }
-
-                File marker = new File(destination.getParentFile(), MODEL_FILE + ".sha256");
-                try (FileOutputStream output = new FileOutputStream(marker, false)) {
-                    output.write(expectedChecksum.getBytes(StandardCharsets.US_ASCII));
-                    output.write('\n');
-                    output.getFD().sync();
-                }
-
-                runOnUiThread(() -> {
-                    modelInstallRunning = false;
-                    callJs("onBundledModelReady");
-                });
-            } catch (Exception error) {
-                if (partial != null && partial.exists()) partial.delete();
-                runOnUiThread(() -> {
-                    modelInstallRunning = false;
-                    callJs("onBundledModelError",
-                            error.getMessage() == null ? "Could not prepare the bundled AI model." : error.getMessage());
-                });
-            }
-        });
     }
 
     private void callJs(String function, String... args) {
@@ -280,47 +107,31 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public boolean hasModel() {
-            try {
-                return isBundledModelReady(readBundledModelChecksum(), readBundledModelSize());
-            } catch (Exception ignored) {
-                return false;
-            }
+        public boolean setServerUrl(String url) {
+            return remoteAiClient.setBaseUrl(url);
         }
 
         @JavascriptInterface
-        public void prepareBundledModel() {
-            MainActivity.this.prepareBundledModel();
+        public void checkServer() {
+            remoteAiClient.checkConnection();
         }
 
         @JavascriptInterface
-        public void loadModel(String systemInstruction, String historyJson) {
-            File file = getModelFile();
-            if (file == null || !hasModel()) {
-                callJs("onAiError", "The built-in AI model is not ready yet. Open Settings and retry model setup.");
-                return;
-            }
-            localAiEngine.loadModel(file.getAbsolutePath(), systemInstruction, historyJson);
-        }
-
-        @JavascriptInterface
-        public void startCharacter(String systemInstruction, String historyJson) {
-            localAiEngine.startConversation(systemInstruction, historyJson);
+        public void startCharacter(String conversationId, String systemInstruction, String historyJson) {
+            remoteAiClient.startConversation(conversationId, systemInstruction, historyJson);
         }
 
         @JavascriptInterface
         public void sendMessage(String prompt) {
-            localAiEngine.sendMessage(prompt);
+            remoteAiClient.sendMessage(prompt);
         }
-
     }
 
     @Override
     protected void onDestroy() {
-        modelInstaller.shutdownNow();
-        if (localAiEngine != null) {
-            localAiEngine.close();
-            localAiEngine = null;
+        if (remoteAiClient != null) {
+            remoteAiClient.close();
+            remoteAiClient = null;
         }
         if (webView != null) {
             webView.removeJavascriptInterface("SoulmateNative");
