@@ -52,7 +52,7 @@ public final class RemoteAiClient {
     private final List<JSONObject> history = new ArrayList<>();
     private final AtomicBoolean generating = new AtomicBoolean(false);
     private volatile String baseUrl = "";
-    private volatile String systemInstruction = "";
+    private volatile String systemInstruction = "";\n    private volatile String activeConversationId = "";
     private volatile Call activeCall;
 
     public RemoteAiClient(Listener listener) {
@@ -160,7 +160,7 @@ public final class RemoteAiClient {
             return;
         }
 
-        final JSONArray messages = new JSONArray();
+        final String conversationIdAtSend = activeConversationId;\n        final JSONArray messages = new JSONArray();
         if (!systemInstruction.isEmpty()) {
             messages.put(new JSONObject().put("role", "system").put("content", systemInstruction));
         }
