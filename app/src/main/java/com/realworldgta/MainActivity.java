@@ -25,9 +25,6 @@ import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private static final String MODEL_FILE = "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm";
-    private static final String MODEL_URL =
-            "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/"
-                    + MODEL_FILE + "?download=true";
     // The selected model card lists the artifact at 328 MiB. Reject incomplete downloads.
     private static final long MIN_MODEL_BYTES = 328L * 1024L * 1024L;
 
@@ -155,7 +152,8 @@ public class MainActivity extends Activity {
         modelInstaller.execute(() -> {
             File destination = getModelFile();
             File partial = destination == null ? null
-                    : new File(destination.getParentFile(), MODEL_FILE + ".partial");
+                    : new File(destination.getParentFile(), MODEL_FILE + "."
+                            + Integer.toHexString(System.identityHashCode(MainActivity.this)) + ".partial");
             try {
                 if (destination == null || partial == null) {
                     throw new IllegalStateException("App storage is unavailable.");
@@ -291,6 +289,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        modelInstaller.shutdownNow();
         if (localAiEngine != null) {
             localAiEngine.close();
             localAiEngine = null;
