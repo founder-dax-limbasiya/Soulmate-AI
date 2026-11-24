@@ -105,7 +105,8 @@ public final class RemoteAiClient {
         });
     }
 
-    public void startConversation(String instruction, String historyJson) {
+    public void startConversation(String conversationId, String instruction, String historyJson) {
+        activeConversationId = conversationId == null ? "" : conversationId;
         systemInstruction = instruction == null ? "" : instruction;
         synchronized (history) {
             history.clear();
@@ -229,9 +230,16 @@ public final class RemoteAiClient {
                         String answer = assistantText.toString().trim();
                         if (answer.isEmpty()) throw new IOException("The AI server returned an empty reply.");
                         synchronized (history) {
-                            history.add(new JSONObject().put("role", "user").put("content", text));
-                            history.add(new JSONObject().put("role", "assistant").put("content", answer));
-                            trimHistoryLocked();
+                            if (conversationIdAtSend.equals(activeConversationId)) {
+                                boolean userAlreadyPresent = !history.isEmpty()
+                                        && "user".equals(history.get(history.size() - 1).optString("role", ""))
+                                        && text.equals(history.get(history.size() - 1).optString("content", ""));
+                                if (!userAlreadyPresent) {
+                                    history.add(new JSONObject().put("role", "user").put("content", text));
+                                }
+                                history.add(new JSONObject().put("role", "assistant").put("content", answer));
+                                trimHistoryLocked();
+                            }
                         }
                         main.post(() -> {
                             listener.onComplete();
