@@ -166,6 +166,7 @@ public class MainActivity extends Activity {
 
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 long copied = 0L;
+                int lastProgressBucket = -1;
                 byte[] buffer = new byte[1024 * 1024];
                 callJs("onBundledModelProgress", "0");
 
@@ -181,7 +182,11 @@ public class MainActivity extends Activity {
                         digest.update(buffer, 0, count);
                         copied += count;
                         int percent = (int) Math.min(100L, copied * 100L / MIN_MODEL_BYTES);
-                        callJs("onBundledModelProgress", String.valueOf(percent));
+                        int progressBucket = percent / 5;
+                        if (progressBucket > lastProgressBucket) {
+                            lastProgressBucket = progressBucket;
+                            callJs("onBundledModelProgress", String.valueOf(percent));
+                        }
                     }
                     output.getFD().sync();
                 }
