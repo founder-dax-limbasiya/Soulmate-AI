@@ -36,6 +36,53 @@ jobs:
         run: |
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Download and verify bundled AI model
+        run: |
+          set -euo pipefail
+          MODEL_FILE="Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm"
+          MODEL_PATH="app/src/main/assets/models/$MODEL_FILE"
+          LICENSE_DIR="app/src/main/assets/licenses"
+          mkdir -p "$(dirname "$MODEL_PATH")" "$LICENSE_DIR"
+
+          curl -fL --retry 5 --retry-all-errors --connect-timeout 30 \
+            --output "$MODEL_PATH" \
+            "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/$MODEL_FILE?download=true"
+
+          MODEL_BYTES="$(stat -c%s "$MODEL_PATH")"
+          MIN_MODEL_BYTES=343932928
+          if [ "$MODEL_BYTES" -lt "$MIN_MODEL_BYTES" ]; then
+            echo "Bundled model download is incomplete: $MODEL_BYTES bytes (minimum $MIN_MODEL_BYTES)."
+            exit 1
+          fi
+
+          sha256sum "$MODEL_PATH" | awk '{print $1}' > app/src/main/assets/models/model.sha256
+
+          curl -fL --retry 3 --retry-all-errors \
+            --output "$LICENSE_DIR/Qwen3-0.6B-LICENSE.txt" \
+            "https://huggingface.co/Qwen/Qwen3-0.6B/resolve/main/LICENSE"
+          curl -fL --retry 3 --retry-all-errors \
+            --output "$LICENSE_DIR/LiteRT-LM-LICENSE.txt" \
+            "https://raw.githubusercontent.com/google-ai-edge/LiteRT-LM/main/LICENSE"
+
+          test -s "$LICENSE_DIR/Qwen3-0.6B-LICENSE.txt"
+          test -s "$LICENSE_DIR/LiteRT-LM-LICENSE.txt"
+          echo "Bundled model: $MODEL_BYTES bytes"
+          echo "SHA-256: $(cat app/src/main/assets/models/model.sha256)"
+          {
+            echo "### Bundled model"
+            echo "- File: $MODEL_FILE"
+            echo "- Size: $MODEL_BYTES bytes"
+            echo "- SHA-256: $(cat app/src/main/assets/models/model.sha256)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify bundled model and license assets
+        run: |
+          cd app/src/main/assets/models
+          sha256sum -c model.sha256
+          cd -
+          test -s app/src/main/assets/licenses/Qwen3-0.6B-LICENSE.txt
+          test -s app/src/main/assets/licenses/LiteRT-LM-LICENSE.txt
+
       - name: Check embedded UI JavaScript
         run: |
           python3 - <<'PY'
@@ -50,6 +97,17 @@ jobs:
 
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
+
+      - name: Verify the APK contains the complete model
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          unzip -Z1 "$APK" | grep -Fx "assets/models/Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm"
+          unzip -Z1 "$APK" | grep -Fx "assets/models/model.sha256"
+          unzip -Z1 "$APK" | grep -Fx "assets/licenses/Qwen3-0.6B-LICENSE.txt"
+          APK_BYTES="$(stat -c%s "$APK")"
+          echo "Bundled APK size: $APK_BYTES bytes"
+          echo "- APK size: $APK_BYTES bytes (model included)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
