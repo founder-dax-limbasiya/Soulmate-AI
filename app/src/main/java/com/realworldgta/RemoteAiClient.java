@@ -38,7 +38,8 @@ public final class RemoteAiClient {
 
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private static final int MAX_HISTORY_MESSAGES = 12;
-    private static final int MAX_MESSAGE_CHARS = 4000;\n    private static final int MAX_HISTORY_CHARS = 6000;
+    private static final int MAX_MESSAGE_CHARS = 4000;
+    private static final int MAX_HISTORY_CHARS = 6000;
 
     private final Listener listener;
     private final Handler main = new Handler(Looper.getMainLooper());
