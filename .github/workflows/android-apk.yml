@@ -2,7 +2,7 @@ name: Build Soulmate AI APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/cloud-ai-small-apk]
   pull_request:
     branches: [main]
   workflow_dispatch:
