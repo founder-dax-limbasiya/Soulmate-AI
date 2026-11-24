@@ -78,7 +78,9 @@ jobs:
       - name: Verify bundled model and license assets
         run: |
           cd app/src/main/assets/models
-          sha256sum -c model.sha256
+          EXPECTED="$(cat model.sha256)"
+          ACTUAL="$(sha256sum Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm | awk '{print $1}')"
+          test "$EXPECTED" = "$ACTUAL"
           cd -
           test -s app/src/main/assets/licenses/Qwen3-0.6B-LICENSE.txt
           test -s app/src/main/assets/licenses/LiteRT-LM-LICENSE.txt
