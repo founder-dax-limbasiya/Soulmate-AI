@@ -31,6 +31,6 @@ android {
 }
 
 dependencies {
-    // On-device text generation. The matching LiteRT-LM model is bundled in the APK assets.
+    // Lightweight HTTPS streaming client; inference runs on the configured cloud server.
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
