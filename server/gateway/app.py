@@ -14,13 +14,14 @@ WINDOW_SECONDS = int(os.getenv("RATE_WINDOW_SECONDS", "600"))
 MAX_REQUESTS_PER_WINDOW = int(os.getenv("RATE_MAX_REQUESTS", "20"))
 MAX_MESSAGES = 14
 MAX_CONTENT_CHARS = 6000
+MAX_TOTAL_CHARS = 12000
 MAX_OUTPUT_TOKENS = 420
 
 app = FastAPI(title="Soulmate AI Gateway", docs_url=None, redoc_url=None)
 http = httpx.AsyncClient(timeout=httpx.Timeout(connect=15, read=300, write=30, pool=15))
 request_times: dict[str, deque[float]] = defaultdict(deque)
 rate_lock = asyncio.Lock()
-generation_slot = asyncio.Semaphore(1)
+generation_slot = asyncio.Lock()
 
 
 def client_ip(request: Request) -> str:
@@ -40,7 +41,6 @@ async def enforce_rate_limit(ip: str) -> None:
         if len(hits) >= MAX_REQUESTS_PER_WINDOW:
             raise HTTPException(status_code=429, detail="Chat limit reached for now. Please try again later.")
         hits.append(now)
-        # Keep the in-memory table bounded on a small free server.
         if len(request_times) > 4096:
             for key in list(request_times)[:1024]:
                 if not request_times[key] or now - request_times[key][-1] > WINDOW_SECONDS:
@@ -63,7 +63,7 @@ def validate_messages(value: Any) -> list[dict[str, str]]:
             raise HTTPException(status_code=413, detail="A message is too long.")
         total += len(content)
         clean.append({"role": role, "content": content})
-    if total > 18000:
+    if total > MAX_TOTAL_CHARS:
         raise HTTPException(status_code=413, detail="Conversation context is too large.")
     if not any(item["role"] == "user" for item in clean):
         raise HTTPException(status_code=400, detail="At least one user message is required.")
@@ -83,6 +83,9 @@ async def health():
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
+    content_length = request.headers.get("content-length", "")
+    if content_length.isdigit() and int(content_length) > 96_000:
+        raise HTTPException(status_code=413, detail="Request body is too large.")
     await enforce_rate_limit(client_ip(request))
     try:
         body = await request.json()
@@ -92,32 +95,43 @@ async def chat_completions(request: Request):
     if not isinstance(body, dict):
         raise HTTPException(status_code=400, detail="Invalid request.")
     messages = validate_messages(body.get("messages"))
+    try:
+        temperature = float(body.get("temperature", 0.85))
+        top_p = float(body.get("top_p", 0.92))
+        max_tokens = int(body.get("max_tokens", 420))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid generation settings.")
+
+    # One request at a time on the small Always Free CPU VM.
+    if generation_slot.locked():
+        raise HTTPException(status_code=503, detail="The AI server is busy. Please try again shortly.")
+    await generation_slot.acquire()
 
     payload = {
         "model": "Qwen3-4B",
         "messages": messages,
-        "temperature": min(1.2, max(0.1, float(body.get("temperature", 0.85)))),
-        "top_p": min(1.0, max(0.1, float(body.get("top_p", 0.92)))),
-        "max_tokens": min(MAX_OUTPUT_TOKENS, max(64, int(body.get("max_tokens", 420)))),
+        "temperature": min(1.2, max(0.1, temperature)),
+        "top_p": min(1.0, max(0.1, top_p)),
+        "max_tokens": min(MAX_OUTPUT_TOKENS, max(64, max_tokens)),
         "stream": True,
         "chat_template_kwargs": {"enable_thinking": False},
     }
 
     async def relay():
-        # One active generation at a time on the small Always Free CPU VM.
-        async with generation_slot:
-            try:
-                async with http.stream("POST", LLAMA_CHAT_URL, json=payload) as upstream:
-                    if upstream.status_code != 200:
-                        await upstream.aread()
-                        yield b'data: {"error":{"message":"The inference server rejected this request."}}\n\n'
-                        yield b"data: [DONE]\n\n"
-                        return
-                    async for chunk in upstream.aiter_bytes():
-                        yield chunk
-            except httpx.HTTPError:
-                yield b'data: {"error":{"message":"The inference server is temporarily unavailable."}}\n\n'
-                yield b"data: [DONE]\n\n"
+        try:
+            async with http.stream("POST", LLAMA_CHAT_URL, json=payload) as upstream:
+                if upstream.status_code != 200:
+                    await upstream.aread()
+                    yield b'data: {"error":{"message":"The inference server rejected this request."}}\n\n'
+                    yield b"data: [DONE]\n\n"
+                    return
+                async for chunk in upstream.aiter_bytes():
+                    yield chunk
+        except httpx.HTTPError:
+            yield b'data: {"error":{"message":"The inference server is temporarily unavailable."}}\n\n'
+            yield b"data: [DONE]\n\n"
+        finally:
+            generation_slot.release()
 
     return StreamingResponse(
         relay(),
