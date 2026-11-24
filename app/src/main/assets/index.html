@@ -342,7 +342,8 @@ if(state.selectedTab==="settings")renderMain("settings");
 }
 if(status==="offline"){aiReady=false;if(state.selectedTab==="settings")renderMain("settings");}
 if(status==="generating")aiReady=true;
-const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;\nconst chatStatus=document.querySelector(".chat-sub");if(chatStatus)chatStatus.textContent=aiReady?"● Cloud AI ready":"● Connect cloud AI in Settings";
+const label=document.getElementById("modelStatus");if(label)label.textContent=detail||status;
+const chatStatus=document.querySelector(".chat-sub");if(chatStatus)chatStatus.textContent=aiReady?"● Cloud AI ready":"● Connect cloud AI in Settings";
 };
 window.onAiError=function(message){
 const id=activeAssistantCharacterId,replyId=activeAssistantId;
