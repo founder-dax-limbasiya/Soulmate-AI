@@ -11,13 +11,27 @@ android {
         applicationId 'com.soulmateai.companion'
         minSdk 24
         targetSdk 35
-        versionCode 9
-        versionName '0.6.0'
+        versionCode 10
+        versionName '0.6.1'
+
+        // LiteRT-LM ships native inference libraries for ARM64 Android phones.
+        // Excluding emulator-only ABIs keeps the distributable APK compact.
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
     }
 
     buildTypes {
-        debug { minifyEnabled false }
-        release { minifyEnabled false }
+        debug {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
     }
 
     kotlinOptions {
@@ -28,7 +42,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
 }
 
 dependencies {

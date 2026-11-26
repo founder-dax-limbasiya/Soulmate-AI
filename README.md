@@ -11,6 +11,14 @@ Soulmate AI is an Android-first, on-device AI companion app for fictional adult 
 - After the one-time model download, chats run offline. Chat text, character prompts and personal notes stay on the phone.
 - Internet permission is used only for the user-initiated model download. No remote chat inference endpoint is configured.
 
+## APK size target
+
+- Target distributable APK size: **50,000,000 bytes maximum**.
+- The compact build targets modern **ARM64 Android phones** and excludes emulator-only native ABIs.
+- R8 code shrinking and Android resource shrinking are enabled for debug and release builds.
+- The 328 MiB model is intentionally downloaded separately into app-private storage. It is not part of the APK; the app cannot generate AI replies until the model has been downloaded and loaded.
+- CI checks APK size, confirms model weights are absent, and verifies that only ARM64 native libraries are packaged.
+
 ## Android app
 
 - Editorial-style WebView UI with Discover, Chats, Create Character and Settings.
@@ -30,7 +38,7 @@ Soulmate AI is an Android-first, on-device AI companion app for fictional adult 
 
 ## Build Android APK
 
-GitHub Actions builds a debug APK with Java 17 and Gradle 8.9. The build verifies that no `.litertlm`, `.gguf` or `.safetensors` model weights are packaged in the APK and enforces a 60 MiB size ceiling.
+GitHub Actions builds a minified ARM64 debug APK with Java 17 and Gradle 8.9. The build fails if the APK exceeds 50,000,000 bytes or if any model weights are packaged in the APK.
 
 ## Open-source components
 
@@ -43,4 +51,5 @@ GitHub Actions builds a debug APK with Java 17 and Gradle 8.9. The build verifie
 - Conversation history, user-created characters and personal notes are stored locally; chat state is AES-GCM encrypted.
 - No account system, cloud chat sync, voice, payments or analytics backend is connected.
 - This is an early beta. The small 0.6B model is a lightweight local companion model, not a frontier-scale model; reply quality and speed depend on the handset.
+- The model is not advertised as an unrestricted or 'uncensored' model. Its responses can still reflect its training and post-training behaviour.
 - The 18+ gate is self-declared and is not verified age assurance.
