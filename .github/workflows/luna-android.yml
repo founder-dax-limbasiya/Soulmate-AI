@@ -3,8 +3,6 @@ on:
   push:
     branches: [luna-compose-offline]
     paths: ['luna/**', '.github/workflows/luna-android.yml']
-  pull_request:
-    paths: ['luna/**', '.github/workflows/luna-android.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -18,14 +16,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
       - working-directory: luna
         run: ./gradlew --no-daemon :app:assembleDebug :app:assembleRelease :app:bundleRelease
       - name: Verify release payload
         run: |
           apk=$(find luna/app/build/outputs/apk/release -name '*.apk' -print -quit)
-          test "$(stat -c%s "$apk")" -lt 30000000
+          size=$(stat -c%s "$apk")
+          echo "Release APK: $size bytes"
+          test "$size" -lt 30000000
           if unzip -Z1 "$apk" | grep -Ei '\.(gguf|safetensors)$'; then exit 1; fi
       - uses: actions/upload-artifact@v4
         with:
