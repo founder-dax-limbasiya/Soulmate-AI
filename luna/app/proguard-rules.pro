@@ -1,0 +1,3 @@
+-keep class studio.luna.Engine { *; }
+-keep interface studio.luna.TokenSink { *; }
+-keep class * implements studio.luna.TokenSink { *; }
