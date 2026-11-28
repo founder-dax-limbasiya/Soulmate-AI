@@ -8,6 +8,8 @@ permissions:
   contents: read
 jobs:
   android:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -35,3 +37,14 @@ jobs:
           path: |
             luna/app/build/outputs/apk/**/*.apk
             luna/app/build/outputs/bundle/release/*.aab
+
+      - name: Publish installable test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="luna-android-preview-${GITHUB_SHA:0:8}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            cp luna/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Luna-preview.apk"
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "Luna Android test build" --notes "Debug-signed ARM64 test APK. Models download separately. Unsigned release APK and AAB are in the matching workflow artifacts." "$RUNNER_TEMP/Luna-preview.apk"
+          fi
