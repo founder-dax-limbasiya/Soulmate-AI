@@ -45,6 +45,10 @@ jobs:
           set -euo pipefail
           tag="luna-android-preview-${GITHUB_SHA:0:8}"
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            cp luna/app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/Luna-preview.apk"
-            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "Luna Android test build" --notes "Debug-signed ARM64 test APK. Models download separately. Unsigned release APK and AAB are in the matching workflow artifacts." "$RUNNER_TEMP/Luna-preview.apk"
+            apk=$(find luna/app/build/outputs/apk/release -name '*.apk' -print -quit)
+            signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+            "$signer" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out "$RUNNER_TEMP/Luna-preview.apk" "$apk"
+            "$signer" verify "$RUNNER_TEMP/Luna-preview.apk"
+            test "$(stat -c%s "$RUNNER_TEMP/Luna-preview.apk")" -lt 30000000
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "Luna Android test build" --notes "Minified ARM64 test APK signed with a disposable test key. Models download separately. Unsigned release APK and AAB are in the matching workflow artifacts." "$RUNNER_TEMP/Luna-preview.apk"
           fi

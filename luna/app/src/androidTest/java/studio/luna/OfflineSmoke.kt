@@ -1,5 +1,7 @@
 package studio.luna
 
+import android.content.Intent
+import androidx.test.uiautomator.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.ByteArrayOutputStream
@@ -10,6 +12,22 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class OfflineSmoke {
+    @Test fun sendFromChatScreenInAirplaneMode() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        val ctx=instrumentation.targetContext
+        val device=UiDevice.getInstance(instrumentation)
+        ctx.startActivity(Intent(ctx,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        fun button(text:String) = requireNotNull(device.wait(Until.findObject(By.text(text)),15000)) { "Missing control: "+text }
+        button("I am 18 or older").click()
+        button("Chat").click()
+        val editor=requireNotNull(device.wait(Until.findObject(By.clazz("android.widget.EditText")),10000))
+        editor.text="Hello! Name a flower."
+        button("Send").click()
+        assertTrue("A generated assistant bubble should offer read-aloud",device.wait(Until.hasObject(By.text("Listen")),180000))
+        val journal=Journal(ctx)
+        try {assertTrue(journal.read("role='assistant'",1).first().text.isNotBlank())}
+        finally {journal.close()}
+    }
     @Test fun localGenerationAfterNetworkDisconnect() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val model = File(ctx.filesDir, "companion.gguf")

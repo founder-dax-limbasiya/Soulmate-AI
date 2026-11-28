@@ -6,4 +6,4 @@ adb shell run-as studio.luna.companion mkdir -p files
 adb shell -T run-as studio.luna.companion sh -c "'cat > files/companion.gguf'" < /tmp/model.gguf
 adb shell cmd connectivity airplane-mode enable
 adb shell am instrument -w studio.luna.companion.test/androidx.test.runner.AndroidJUnitRunner | tee /tmp/luna-test-results
-grep -F 'OK (1 test)' /tmp/luna-test-results
+grep -F 'OK (2 tests)' /tmp/luna-test-results
