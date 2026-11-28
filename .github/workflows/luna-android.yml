@@ -1,0 +1,54 @@
+name: Luna native Android
+on:
+  push:
+    branches: [luna-compose-offline]
+    paths: ['luna/**', '.github/workflows/luna-android.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - working-directory: luna
+        run: ./gradlew --no-daemon :app:assembleDebug :app:assembleRelease :app:bundleRelease
+      - name: Verify release payload
+        run: |
+          apk=$(find luna/app/build/outputs/apk/release -name '*.apk' -print -quit)
+          size=$(stat -c%s "$apk")
+          echo "Release APK: $size bytes"
+          test "$size" -lt 30000000
+          if unzip -Z1 "$apk" | grep -Ei '\.(gguf|safetensors)$'; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luna-android
+          path: |
+            luna/app/build/outputs/apk/**/*.apk
+            luna/app/build/outputs/bundle/release/*.aab
+
+      - name: Publish installable test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="luna-android-preview-${GITHUB_SHA:0:8}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            apk=$(find luna/app/build/outputs/apk/release -name '*.apk' -print -quit)
+            signer="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+            "$signer" sign --ks "$HOME/.android/debug.keystore" --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out "$RUNNER_TEMP/Luna-preview.apk" "$apk"
+            "$signer" verify "$RUNNER_TEMP/Luna-preview.apk"
+            test "$(stat -c%s "$RUNNER_TEMP/Luna-preview.apk")" -lt 30000000
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "Luna Android test build" --notes "Minified ARM64 test APK signed with a disposable test key. Models download separately. Unsigned release APK and AAB are in the matching workflow artifacts." "$RUNNER_TEMP/Luna-preview.apk"
+          fi

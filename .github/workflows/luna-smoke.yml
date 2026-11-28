@@ -1,0 +1,36 @@
+name: Luna offline Android smoke test
+on:
+  push:
+    branches: [luna-compose-offline]
+    paths: ['luna/app/**', '.github/workflows/luna-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-chat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager "platforms;android-36" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
+      - working-directory: luna
+        run: ./gradlew -PtestAbi=x86_64 :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Fetch and verify the GitHub model
+        run: |
+          curl -fL --retry 3 -o /tmp/model.gguf https://github.com/founder-dax-limbasiya/Soulmate-AI/releases/download/luna-models-v1/qwen2.5-0.5b-instruct-q4_0.gguf
+          echo '7671c0c304e6ce5a7fc577bcb12aba01e2c155cc2efd29b2213c95b18edaf6ed  /tmp/model.gguf' | sha256sum -c -
+      - name: Permit hardware accelerated emulator
+        run: sudo chmod 666 /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          ram-size: 3072M
+          script: bash luna/gradle/offline-smoke.sh

@@ -1,0 +1,1 @@
+Luna uses llama.cpp (ggml contributors, MIT license included). Its compatible Qwen2.5-0.5B-Instruct weights are produced by the Qwen team and distributed separately under Apache License 2.0. Quantization is supplied by the upstream Qwen GGUF release. Luna is independent of the model authors.
